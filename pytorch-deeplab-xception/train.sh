@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=0 python train.py --dataset visdrone --backbone mobilenet --lr 0.005 --workers 12 --epochs 300 --batch-size 16 --gpu-ids 0 --checkname deeplab-mobile-region --eval-interval 2 --base-size 480 --crop-size 640,480 --use-balanced-weights
