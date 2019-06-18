@@ -28,6 +28,7 @@ src_testdir = dbroot + '/VisDrone2019-DET-test-challenge'
 dest_datadir = dbroot + '/region_voc'
 image_dir = dest_datadir + '/JPEGImages'
 segmentation_dir = dest_datadir + '/SegmentationClass'
+annotation_dir = dest_datadir + '/Annotations'
 list_folder = dest_datadir + '/ImageSets'
 
 # copy train and test images
@@ -53,7 +54,7 @@ def get_box(img_path):
         data = [x.strip().split(',')[:8] for x in f.readlines()]
         annos = np.array(data)
 
-    boxes = annos[annos[:, 4] == '1'][:4].astype(np.int32)
+    boxes = annos[annos[:, 4] == '1'][:, :4].astype(np.int32)
 
     y = np.zeros_like(boxes)
     y[:, 0] = boxes[:, 0]
@@ -67,8 +68,9 @@ def _generate_mask(img_path):
     try:
         # image mask
         img_name = os.path.basename(img_path)
-
-        width, height = 2000, 1500
+        img = cv2.imread(img_path)
+        height, width = img.shape[:2]
+        
         # chip mask 40x30, model input size 640x480
         mask_w, mask_h = 40, 30
 
@@ -104,6 +106,7 @@ if __name__ == "__main__":
         os.mkdir(dest_datadir)
         os.mkdir(image_dir)
         os.mkdir(segmentation_dir)
+        os.mkdir(annotation_dir)
         os.mkdir(list_folder)
 
     train_list = glob.glob(src_traindir + '/images/*.jpg')
@@ -118,14 +121,23 @@ if __name__ == "__main__":
         with open(os.path.join(list_folder, 'val.txt'), 'w') as f:
             temp = [os.path.basename(x)[:-4]+'\n' for x in val_list]
             f.writelines(temp)
-        # print('copy train_val images....')
-        # with concurrent.futures.ThreadPoolExecutor() as exector:
-        #     exector.map(_copy, trainval_list, [image_dir]*len(trainval_list))
-        # print('done.')
+        
+        print('copy train_val images....')
+        with concurrent.futures.ThreadPoolExecutor() as exector:
+            exector.map(_copy, trainval_list, [image_dir]*len(trainval_list))
+
         print('generate masks...')
         with concurrent.futures.ThreadPoolExecutor() as exector:
             exector.map(_generate_mask, trainval_list)
-        print('done.')
+        
+        print('copy txts...')
+        train_anno_list = glob.glob(src_traindir + '/annotations/*.txt')
+        val_anno_list = glob.glob(src_valdir + '/annotations/*.txt')
+        trainval_anno_list = train_anno_list + val_anno_list
+        with concurrent.futures.ThreadPoolExecutor() as exector:
+            exector.map(_copy, trainval_anno_list, [annotation_dir]*len(trainval_anno_list))
+
+        print('done.')    
 
     if 'test' in args.mode:
         with open(os.path.join(list_folder, 'test.txt'), 'w') as f:
