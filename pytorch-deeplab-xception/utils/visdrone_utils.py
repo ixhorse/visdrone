@@ -1,16 +1,23 @@
+import os
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 
-def get_label_box(annos, imgid):
-    img = annos["imgs"][imgid]
-    box_all = []
-    for obj in img['objects']:
-        box = obj['bbox']
-        box = [int(box['xmin']), int(box['ymin']), int(box['xmax']), int(box['ymax'])]
-        # box = [int(x * 0.3) for x in box]
-        box_all.append(box)
-    return box_all
+def get_label_box(img_path):
+    anno_path = img_path.replace('JPEGImages', 'Annotations')
+    anno_path = anno_path.replace('jpg', 'txt')
+    with open(anno_path, 'r') as f:
+        data = [x.strip().split(',')[:8] for x in f.readlines()]
+        annos = np.array(data)
+
+    boxes = annos[annos[:, 4] == '1'][:, :4].astype(np.int32)
+    y = np.zeros_like(boxes)
+    y[:, 0] = boxes[:, 0]
+    y[:, 1] = boxes[:, 1]
+    y[:, 2] = boxes[:, 0] + boxes[:, 2]
+    y[:, 3] = boxes[:, 1] + boxes[:, 3]
+    
+    return y
 
 def generate_box_from_mask(mask):
     """
@@ -54,13 +61,14 @@ def enlarge_box(mask_box, image_size, ratio=2):
 def resize_box(box, original_size, dest_size):
     """
     Args:
-        box: [xmin, ymin, xmax, ymax]
-        original_size: int
-        dest_size: int
+        box: array, [xmin, ymin, xmax, ymax]
+        original_size: (width, height)
+        dest_size: (width, height)
     """
-    ratio = dest_size / original_size
-    box = np.array(box) * ratio
-    return list(np.clip(box, 0, dest_size-1).astype(np.int32))
+    h_ratio = 1.0 * dest_size[1] / original_size[1]
+    w_ratio = 1.0 * dest_size[0] / original_size[0]
+    box = np.array(box) * np.array([w_ratio, h_ratio, w_ratio, h_ratio])
+    return list(box.astype(np.int32))
 
 
 def overlap(box1, box2, thresh = 0.75):

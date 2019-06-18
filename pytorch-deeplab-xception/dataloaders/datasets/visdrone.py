@@ -50,12 +50,11 @@ class VisDroneSegmentation(Dataset):
                 _image = os.path.join(self._image_dir, line + ".jpg")
                 _cat = os.path.join(self._cat_dir, line + "_region.png")
                 assert os.path.isfile(_image)
-                assert os.path.isfile(_cat)
                 self.im_ids.append(line)
                 self.images.append(_image)
-                self.categories.append(_cat)
-
-        assert (len(self.images) == len(self.categories))
+                if split != 'test':
+                    assert os.path.isfile(_cat)
+                    self.categories.append(_cat)
 
         # Display stats
         print('Number of images in {}: {:d}'.format(split, len(self.images)))
@@ -79,7 +78,10 @@ class VisDroneSegmentation(Dataset):
 
     def _make_img_gt_point_pair(self, index):
         _img = Image.open(self.images[index]).convert('RGB')
-        _target = Image.open(self.categories[index])
+        if 'test' not in self.split:
+            _target = Image.open(self.categories[index])
+        else:
+            _target = np.array([0])
 
         return _img, _target
 
@@ -89,7 +91,7 @@ class VisDroneSegmentation(Dataset):
             tr.RandomColorJeter(0.3, 0.3, 0.3, 0.3),
             tr.RandomHorizontalFlip(),
             # tr.RandomScaleCrop(base_size=self.args.base_size, crop_size=self.args.crop_size),
-            tr.RandomGaussianBlur(),
+            # tr.RandomGaussianBlur(),
             tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             tr.ToTensor()])
 
