@@ -84,22 +84,6 @@ def region_postprocess(regions, mask_shape):
     return small_regions + big_regions
 
 
-def get_box_label(img_path):
-    anno_path = img_path.replace('images', 'annotations')
-    anno_path = anno_path.replace('jpg', 'txt')
-    with open(anno_path, 'r') as f:
-        data = [x.strip().split(',')[:8] for x in f.readlines()]
-        annos = np.array(data)
-
-    boxes = annos[annos[:, 4] == '1'][:, :4].astype(np.int32)
-    y = np.zeros_like(boxes)
-    y[:, 0] = boxes[:, 0]
-    y[:, 1] = boxes[:, 1]
-    y[:, 2] = boxes[:, 0] + boxes[:, 2]
-    y[:, 3] = boxes[:, 1] + boxes[:, 3]
-    
-    return y
-
 def generate_box_from_mask(mask):
     """
     Args:
@@ -150,6 +134,31 @@ def resize_box(box, original_size, dest_size):
     return list(box.astype(np.int32))
 
 
+def generate_crop_region(regions, img_size):
+    """
+    generate final regions
+    enlarge regions < 300
+    """
+    width, height = img_size
+    final_regions = []
+    for box in regions:
+        box_w, box_h = box[2] - box[0], box[3] - box[1]
+        center_x, center_y = box[0] + box_w / 2.0, box[1] + box_h / 2.0
+        if box_w < 300 and box_h < 300:
+            crop_size = 300 / 2
+        else:
+            crop_size = max(box_w, box_h) / 2
+
+        center_x = crop_size if center_x < crop_size else center_x
+        center_y = crop_size if center_y < crop_size else center_y
+        center_x = width - crop_size - 1 if center_x > width - crop_size - 1 else center_x
+        center_y = height - crop_size - 1 if center_y > height - crop_size - 1 else center_y
+        
+        new_box = [center_x - crop_size, center_y - crop_size,
+                   center_x + crop_size, center_y + crop_size]
+        final_regions.append([int(x) for x in new_box])
+    return final_regions
+
 def overlap(box1, box2, thresh = 0.75):
     """ (box1 \cup box2) / box2
     Args:
@@ -171,3 +180,19 @@ def overlap(box1, box2, thresh = 0.75):
         return False
     else:
         return True
+
+def get_box_label(img_path):
+    anno_path = img_path.replace('images', 'annotations')
+    anno_path = anno_path.replace('jpg', 'txt')
+    with open(anno_path, 'r') as f:
+        data = [x.strip().split(',')[:8] for x in f.readlines()]
+        annos = np.array(data)
+
+    boxes = annos[annos[:, 4] == '1'][:, :4].astype(np.int32)
+    y = np.zeros_like(boxes)
+    y[:, 0] = boxes[:, 0]
+    y[:, 1] = boxes[:, 1]
+    y[:, 2] = boxes[:, 0] + boxes[:, 2]
+    y[:, 3] = boxes[:, 1] + boxes[:, 3]
+    
+    return y

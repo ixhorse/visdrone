@@ -57,6 +57,7 @@ def _vis(img_path):
     # region postprocess
     img3 = img.copy()
     new_regions = utils.region_postprocess(region_box, (width, height))
+    new_regions = utils.generate_crop_region(new_regions, (width, height))
     for box in new_regions:
         cv2.rectangle(img3, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 4)
 

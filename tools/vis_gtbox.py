@@ -21,10 +21,10 @@ src_traindir = dbroot + '/VisDrone2019-DET-train'
 src_valdir = dbroot + '/VisDrone2019-DET-val'
 src_testdir = dbroot + '/VisDrone2019-DET-test-challenge'
 
-dest_datadir = dbroot + '/region_voc'
+dest_datadir = dbroot + '/detect_voc'
 image_dir = dest_datadir + '/JPEGImages'
-segmentation_dir = dest_datadir + '/SegmentationClass'
-list_folder = dest_datadir + '/ImageSets'
+anno_dir = dest_datadir + '/Annotations'
+list_dir = dest_datadir + '/ImageSets/Main'
 
 def parse_xml(file):
     xml = ET.parse(file).getroot()
@@ -33,7 +33,10 @@ def parse_xml(file):
 
     # size
     location = xml.find('location')
-    width = int(location.find('xmax').text) - int(location.find('xmin').text)
+    loc = []
+    for i, pt in enumerate(pts):
+        cur_pt = int(location.find(pt).text) - 1
+        loc.append(cur_pt)
 
     # bounding boxes
     for obj in xml.iter('object'):
@@ -44,7 +47,7 @@ def parse_xml(file):
             cur_pt = int(bbox.find(pt).text) - 1
             bndbox.append(cur_pt)
         box_all += [bndbox]
-    return box_all, width
+    return box_all, loc
 
 def get_box_label(img_path):
     anno_path = img_path.replace('images', 'annotations')
@@ -72,23 +75,26 @@ def _boxvis(img, gt_box_list):
     plt.show()
     cv2.waitKey(0)
 
-def _originvis(name, bbox):
-    img = cv2.imread(os.path.join(src_traindir, name))
-    for box in bbox:
-        cv2.rectangle(img, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 1)
-    plt.subplot(1, 1, 1); plt.imshow(img[:, :, [2,1,0]])
-    plt.show()
-    cv2.waitKey(0)
-
     
 if __name__ == '__main__':
-    train_list = glob.glob(src_valdir + '/images/*.jpg')
+    train_list = glob.glob(src_traindir + '/images/*.jpg')
 
-    temp = []
+    with open(os.path.join(list_dir, 'train.txt'), 'r') as f:
+        img_list = [x.strip() for x in f.readlines()]
+
     for img_path in train_list:
         img = cv2.imread(img_path)
-        temp.append(img.shape[1] / img.shape[0])
-        # boxes = get_box_label(img_path)
-        # _boxvis(img, boxes)
-    print(np.unique(np.array(temp)))
+        imgid = os.path.basename(img_path)[:-4]
+        crop_list = []
+        for crop_id in img_list:
+            if imgid in crop_id:
+                crop_list.append(crop_id)
+        
+        loc_list = []
+        for name in crop_list:
+            # crop_img = cv2.imread(os.path.join(image_dir, name+'.jpg'))
+            boxes, loc = parse_xml(os.path.join(anno_dir, name+'.xml'))
+            assert loc[2] - loc[0] == loc[3] - loc[1]
+            loc_list.append(loc)
+        # _boxvis(img, loc_list)
     
