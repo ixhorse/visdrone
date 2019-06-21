@@ -154,8 +154,13 @@ def generate_crop_region(regions, img_size):
         center_x = width - crop_size - 1 if center_x > width - crop_size - 1 else center_x
         center_y = height - crop_size - 1 if center_y > height - crop_size - 1 else center_y
         
-        new_box = [center_x - crop_size, center_y - crop_size,
-                   center_x + crop_size, center_y + crop_size]
+        new_box = [center_x - crop_size if center_x - crop_size > 0 else 0,
+                   center_y - crop_size if center_y - crop_size > 0 else 0,
+                   center_x + crop_size if center_x + crop_size < width else width-1,
+                   center_y + crop_size if center_y + crop_size < height else height-1]
+        for x in new_box:
+            if x < 0:
+                pdb.set_trace()
         final_regions.append([int(x) for x in new_box])
     return final_regions
 

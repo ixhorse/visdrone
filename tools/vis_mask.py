@@ -27,7 +27,7 @@ image_dir = dest_datadir + '/JPEGImages'
 segmentation_dir = dest_datadir + '/SegmentationClass'
 list_folder = dest_datadir + '/ImageSets'
 
-pred_mask_dir = '../pytorch-deeplab-xception/run/mask'
+pred_mask_dir = '../pytorch-deeplab-xception/run/mask1'
 
 
 def _vis(img_path):
