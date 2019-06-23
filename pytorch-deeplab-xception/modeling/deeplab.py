@@ -22,15 +22,17 @@ class DeepLab(nn.Module):
 
         self.backbone = build_backbone(backbone, output_stride, BatchNorm)
         self.aspp = build_aspp(backbone, output_stride, BatchNorm)
-        self.link_conv = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
-                                       BatchNorm(64),
+        # self.link_conv = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
+        #                                BatchNorm(64),
+        #                                nn.ReLU(),
+        #                                nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1, bias=False))
+        self.link_conv = nn.Sequential(nn.Conv2d(64, 128, kernel_size=1, stride=1, padding=0, bias=False))
+        self.last_conv = nn.Sequential(nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1, bias=False),
+                                       BatchNorm(128),
                                        nn.ReLU(),
-                                       nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1, bias=False))
-        self.last_conv = nn.Sequential(nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=False),
-                                       BatchNorm(256),
-                                       nn.ReLU(),
-                                       nn.Dropout(0.1),
-                                       nn.Conv2d(256, num_classes, kernel_size=1, stride=1))
+                                    #    nn.Dropout(0.1),
+                                       nn.Conv2d(128, num_classes, kernel_size=1, stride=1))
+        # self.last_conv = nn.Sequential(nn.Conv2d(128, num_classes, kernel_size=1, stride=1))
 
         self._init_weight()
         if freeze_bn:
@@ -65,7 +67,7 @@ class DeepLab(nn.Module):
 
     def get_10x_lr_params(self):
         # modules = [self.aspp, self.decoder]
-        modules = [self.aspp, self.last_conv, self.link_conv]
+        modules = [self.aspp, self.last_conv]
         for i in range(len(modules)):
             for m in modules[i].named_modules():
                 if isinstance(m[1], nn.Conv2d) or isinstance(m[1], SynchronizedBatchNorm2d) \
@@ -75,15 +77,16 @@ class DeepLab(nn.Module):
                             yield p
 
     def _init_weight(self):
-        for m in self.last_conv.modules():
-            if isinstance(m, nn.Conv2d):
-                torch.nn.init.kaiming_normal_(m.weight)
-            elif isinstance(m, SynchronizedBatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
+        for module in [self.link_conv, self.last_conv]:
+            for m in module.modules():
+                if isinstance(m, nn.Conv2d):
+                    torch.nn.init.kaiming_normal_(m.weight)
+                elif isinstance(m, SynchronizedBatchNorm2d):
+                    m.weight.data.fill_(1)
+                    m.bias.data.zero_()
+                elif isinstance(m, nn.BatchNorm2d):
+                    m.weight.data.fill_(1)
+                    m.bias.data.zero_()
 
 if __name__ == "__main__":
     model = DeepLab(backbone='mobilenet', output_stride=16)
