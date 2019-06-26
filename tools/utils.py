@@ -16,7 +16,7 @@ def region_cluster(regions, mask_shape):
     model = AgglomerativeClustering(
                 n_clusters=None,
                 linkage='average',
-                distance_threshold=min(mask_shape) / 2,
+                distance_threshold=min(mask_shape) * 0.4,
                 compute_full_tree=True)
 
     labels = model.fit_predict(centers)

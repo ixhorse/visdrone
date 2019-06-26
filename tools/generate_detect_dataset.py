@@ -5,9 +5,9 @@ import cv2
 import random
 import os, sys
 import glob
+import json
 import numpy as np
 from tqdm import tqdm
-from itertools import product
 from xml.etree.ElementTree import Element, SubElement, tostring
 from xml.dom.minidom import parseString
 from path import Path
@@ -47,6 +47,8 @@ def generate_region_gt(img_size, region_box, gt_boxes, labels):
         chip_label = []
 
         for i, box in enumerate(gt_boxes):
+            if labels[i] == 0 or labels[i] == 11:
+                continue
             if utils.overlap(chip, box, 0.75):
                 box = [max(box[0], chip[0]), max(box[1], chip[1]), 
                        min(box[2], chip[2]), min(box[3], chip[3])]
@@ -122,10 +124,11 @@ def write_chip_and_anno(image, imgid,
     """write chips of one image to disk and make xml annotations
     """
     assert len(chip_gt_list) > 0
+    chip_loc = dict()
     for i, chip in enumerate(chip_list):
         img_name = '%s_%d.jpg' % (imgid, i)
         xml_name = '%s_%d.xml' % (imgid, i)
-
+        chip_loc[img_name] = [int(x) for x in chip]
         chip_size = (chip[2] - chip[0], chip[3] - chip[1])
         # # target size
         # tsize = (416, 416)
@@ -151,6 +154,8 @@ def write_chip_and_anno(image, imgid,
         cv2.imwrite(os.path.join(image_dir, img_name), chip_img)
         with open(os.path.join(anno_dir, xml_name), 'w') as f:
             f.write(dom.toprettyxml(indent='\t', encoding='utf-8').decode('utf-8'))
+        
+    return chip_loc
 
 
 def generate_imgset(img_list, imgset):
@@ -194,8 +199,8 @@ def _worker(img_path):
         gt_boxes, labels = get_box_label(img_path)
 
         chip_list, chip_gt_list, chip_label_list = generate_region_gt((width, height), region_box, gt_boxes, labels)
-        write_chip_and_anno(image, imgid, chip_list, chip_gt_list, chip_label_list)
-        return len(chip_list)
+        chip_loc = write_chip_and_anno(image, imgid, chip_list, chip_gt_list, chip_label_list)
+        return len(chip_list), chip_loc
         # _progress()
     except Exception:
         traceback.print_exc()
@@ -215,17 +220,24 @@ def main():
 
     for img_list, imgset in zip([train_list, val_list], ['train', 'val']):
         chip_ids = []
+        chip_loc = dict()
         for i, img_path in enumerate(img_list):
             img_id = os.path.basename(img_list[i])[:-4]
             sys.stdout.write('\rsearch: {:d}/{:d} {:s}'
                             .format(i + 1, len(img_list), img_id))
             sys.stdout.flush()
 
-            chiplen = _worker(img_path)
+            chiplen, loc = _worker(img_path)
             for i in range(chiplen):
                 chip_ids.append('%s_%s' % (img_id, i))
+            chip_loc.update(loc)
         
         generate_imgset(chip_ids, imgset)
+
+        # write chip loc json
+        with open(os.path.join(anno_dir, '%s_chip.json'%imgset), 'w') as f:
+            json.dump(chip_loc, f)
+            print('write loc json.')
 
 if __name__ == '__main__':
     main()

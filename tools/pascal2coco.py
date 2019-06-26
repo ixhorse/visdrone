@@ -71,11 +71,9 @@ class PASCALVOC2COCO(object):
 
     def __init__(self):
         self.cat2id = {
-            '1': 1, '2': 2, '3': 3, '4': 4,
-            '5': 5, '6': 6, '7': 7, '8': 8,
-            '9': 9, '10': 10, '11': 11, '12': 12,
-            '13': 13, '14': 14, '15': 15, '16': 16,
-            '17': 17, '18': 18, '19': 19, '20': 20, '21':21,
+            '1': 0, '2': 1, '3': 2, '4': 3, '5': 4,
+            '6': 5, '7': 6, '8': 7, '9': 8,
+            '10': 9,
         }
 
     def get_img_item(self, file_name, image_id, size):
@@ -139,11 +137,11 @@ class PASCALVOC2COCO(object):
             with open(xml_file, 'r') as f:
                 ann_dict = xmltodict.parse(f.read(), force_list=('object',))
 
-            # Add image item.
-            image = self.get_img_item(name + '.jpg', image_id, ann_dict['annotation']['size'])
-            images.append(image)
-
             if 'object' in ann_dict['annotation']:
+                # Add image item.
+                image = self.get_img_item(name + '.jpg', image_id, ann_dict['annotation']['size'])
+                images.append(image)
+                
                 for obj in ann_dict['annotation']['object']:
                     # Add annotation item.
                     annotation = self.get_ann_item(obj, image_id, ann_id)
@@ -179,6 +177,6 @@ if __name__ == '__main__':
 
     converter = PASCALVOC2COCO()
     devkit_path = dest_datadir
-    split = 'val'
-    
-    converter.convert(devkit_path, split)
+
+    for split in ['train', 'val']:
+        converter.convert(devkit_path, split)
