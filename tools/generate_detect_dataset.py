@@ -130,22 +130,12 @@ def write_chip_and_anno(image, imgid,
         xml_name = '%s_%d.xml' % (imgid, i)
         chip_loc[img_name] = [int(x) for x in chip]
         chip_size = (chip[2] - chip[0], chip[3] - chip[1])
-        # # target size
-        # tsize = (416, 416)
-        # # resize ratio -> target size
-        # ratio_w = (chip[2] - chip[0]) / tsize[0]
-        # ratio_h = (chip[3] - chip[1]) / tsize[1]
         
         chip_img = image[chip[1]:chip[3], chip[0]:chip[2], :].copy()
         assert len(chip_img.shape) == 3
-        # chip_img = cv2.resize(chip_img, tsize, interpolation=cv2.INTER_LINEAR)
 
         bbox = []
         for gt in chip_gt_list[i]:
-            # bbox.append([gt[0] / ratio_w,
-            #             gt[1] / ratio_h,
-            #             gt[2] / ratio_w,
-            #             gt[3] / ratio_h])
             bbox.append(gt)
         bbox = np.array(bbox, dtype=np.int)
 
@@ -157,30 +147,10 @@ def write_chip_and_anno(image, imgid,
         
     return chip_loc
 
-
 def generate_imgset(img_list, imgset):
     with open(os.path.join(list_dir, imgset+'.txt'), 'w') as f:
         f.writelines([x + '\n' for x in img_list])
-
-
-def get_box_label(img_path):
-    anno_path = img_path.replace('images', 'annotations')
-    anno_path = anno_path.replace('jpg', 'txt')
-    with open(anno_path, 'r') as f:
-        data = [x.strip().split(',')[:8] for x in f.readlines()]
-        annos = np.array(data)
-
-    boxes = annos[annos[:, 4] == '1'][:, :6].astype(np.int32)
-    y = np.zeros((len(boxes), 4))
-    y[:, 0] = boxes[:, 0]
-    y[:, 1] = boxes[:, 1]
-    y[:, 2] = boxes[:, 0] + boxes[:, 2]
-    y[:, 3] = boxes[:, 1] + boxes[:, 3]
-
-    labels = boxes[:, 5]
-    
-    return y, labels
-
+    print('\n%d images in %s set.' % (len(img_list), imgset))
 
 def _worker(img_path):
     try:
@@ -191,12 +161,12 @@ def _worker(img_path):
         mask_path = os.path.join(segmentation_dir, imgid+'_region.png')
         mask_img = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
         mask_h, mask_w = mask_img.shape[:2]
-        region_box = utils.generate_box_from_mask(mask_img)
+        region_box, contours = utils.generate_box_from_mask(mask_img)
+        region_box = utils.region_postprocess(region_box, contours, (mask_w, mask_h))
         region_box = utils.resize_box(region_box, (mask_w, mask_h), (width, height))
-        region_box = utils.region_postprocess(region_box, (width, height))
         region_box = utils.generate_crop_region(region_box, (width, height))
 
-        gt_boxes, labels = get_box_label(img_path)
+        gt_boxes, labels = utils.get_box_label(img_path)
 
         chip_list, chip_gt_list, chip_label_list = generate_region_gt((width, height), region_box, gt_boxes, labels)
         chip_loc = write_chip_and_anno(image, imgid, chip_list, chip_gt_list, chip_label_list)
@@ -218,7 +188,7 @@ def main():
     val_list = glob.glob(src_valdir + '/images/*.jpg')
     trainval_list = train_list + val_list
 
-    for img_list, imgset in zip([train_list, val_list], ['train', 'val']):
+    for img_list, imgset in zip([val_list], ['val']):
         chip_ids = []
         chip_loc = dict()
         for i, img_path in enumerate(img_list):

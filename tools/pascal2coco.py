@@ -178,5 +178,5 @@ if __name__ == '__main__':
     converter = PASCALVOC2COCO()
     devkit_path = dest_datadir
 
-    for split in ['train', 'val']:
+    for split in ['val']:
         converter.convert(devkit_path, split)

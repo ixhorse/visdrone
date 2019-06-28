@@ -31,10 +31,10 @@ def main():
         
         pixel_num.append(np.sum(mask_img))
 
-        label_box = utils.get_box_label(image_file)
-        region_box = utils.generate_box_from_mask(mask_img)
+        label_box, _ = utils.get_box_label(image_file)
+        region_box, contours = utils.generate_box_from_mask(mask_img)
+        region_box = utils.region_postprocess(region_box, contours, (mask_w, mask_h))
         region_box = utils.resize_box(region_box, (mask_w, mask_h), (width, height))
-        region_box = utils.region_postprocess(region_box, (width, height))
         region_box = utils.generate_crop_region(region_box, (width, height))
 
         count = 0

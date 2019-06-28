@@ -27,7 +27,7 @@ image_dir = dest_datadir + '/JPEGImages'
 segmentation_dir = dest_datadir + '/SegmentationClass'
 list_folder = dest_datadir + '/ImageSets'
 
-pred_mask_dir = '../pytorch-deeplab-xception/run/mask1'
+pred_mask_dir = '../pytorch-deeplab-xception/run/mask'
 
 
 def _vis(img_path):
@@ -42,30 +42,38 @@ def _vis(img_path):
 
     # bounding box
     img1 = img.copy()
-    gt_box_list = utils.get_box_label(img_path)
+    gt_box_list, _ = utils.get_box_label(img_path)
     for box in gt_box_list:
         cv2.rectangle(img1, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 4)
 
     # region box
     img2 = img.copy()
     mask_h, mask_w = pred_mask.shape[:2]
-    region_box = utils.generate_box_from_mask(pred_mask[:, :, 0])
-    region_box = utils.resize_box(region_box, (mask_w, mask_h), (width, height))
-    for box in region_box:
+    region_box, contours = utils.generate_box_from_mask(pred_mask[:, :, 0])
+    resize_region_box = utils.resize_box(region_box, (mask_w, mask_h), (width, height))
+    for box in resize_region_box:
         cv2.rectangle(img2, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 4)
 
     # region postprocess
     img3 = img.copy()
-    new_regions = utils.region_postprocess(region_box, (width, height))
-    new_regions = utils.generate_crop_region(new_regions, (width, height))
-    for box in new_regions:
+    new_regions = utils.region_postprocess(region_box, contours, (mask_w, mask_h))
+    resize_region_box = utils.resize_box(new_regions, (mask_w, mask_h), (width, height))
+    # new_regions = utils.generate_crop_region(resize_region_box, (width, height))
+    for box in resize_region_box:
         cv2.rectangle(img3, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 4)
+
+    img4 = img.copy()
+    # resize_region_box = utils.resize_box(temp, (mask_w, mask_h), (width, height))
+    new_regions = utils.generate_crop_region(resize_region_box, (width, height))
+    for box in new_regions:
+        cv2.rectangle(img4, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 4)
 
     plt.subplot(2, 3, 1); plt.imshow(img1[:, :, [2,1,0]])
     plt.subplot(2, 3, 2); plt.imshow(img2[:, :, [2,1,0]])
     plt.subplot(2, 3, 3); plt.imshow(img3[:, :, [2,1,0]])
     plt.subplot(2, 3, 4); plt.imshow(label_mask[:, :, [2,1,0]])
     plt.subplot(2, 3, 5); plt.imshow(pred_mask[:, :, [2,1,0]])
+    plt.subplot(2, 3, 6); plt.imshow(img4[:, :, [2,1,0]])
     
     plt.show()
     cv2.waitKey(0)
