@@ -52,14 +52,19 @@ def region_morphology(contours, mask_shape):
     binary = np.zeros((mask_h, mask_w)).astype(np.uint8)
     cv2.drawContours(binary, contours, -1, 1, cv2.FILLED)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel) # 开操作
-    region_box, _ = generate_box_from_mask(binary)
+    binary_open = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel) # 开操作
+    region_open, _ = generate_box_from_mask(binary_open)
+
+    binary_rest = binary ^ binary_open
+    region_rest, _ = generate_box_from_mask(binary_rest)
+
     regions = []
-    for box in region_box:
-        box = [max(0, box[0]-2), max(0, box[1]-2),
-               min(mask_w, box[2]+2), min(mask_h, box[3]+2)]
+    alpha = 1
+    for box in region_open:
+        box = [max(0, box[0] - alpha), max(0, box[1] - alpha),
+               min(mask_w, box[2] + alpha), min(mask_h, box[3] + alpha)]
         regions.append(box)
-    return regions
+    return regions + region_rest
 
 def region_postprocess(regions, contours, mask_shape):
     mask_w, mask_h = mask_shape
@@ -76,6 +81,18 @@ def region_postprocess(regions, contours, mask_shape):
             
     # 2. image open
     regions = region_morphology(big_contours, mask_shape) + small_regions
+
+    # 3. delete inner box
+    regions = np.array(regions)
+    idx = np.zeros((len(regions)))
+    for i in range(len(regions)):
+        for j in range(len(regions)):
+            if i == j or idx[i] == 1 or idx[j] == 1:
+                continue
+            box1, box2 = regions[i], regions[j]
+            if overlap(regions[i], regions[j], 0.9):
+                idx[j] = 1
+    regions = regions[idx == 0]
 
     # 3. process small regions and big regions
     small_regions = []
@@ -106,9 +123,9 @@ def generate_crop_region(regions, img_size):
     for box in regions:
         box_w, box_h = box[2] - box[0], box[3] - box[1]
         center_x, center_y = box[0] + box_w / 2.0, box[1] + box_h / 2.0
-        if box_w < 300 and box_h < 300:
+        if box_w < min(img_size) * 0.4 and box_h < min(img_size) * 0.4:
             crop = True
-            crop_size = 300 / 2
+            crop_size = min(img_size) * 0.2
         elif box_w / box_h > 1.3 or box_h / box_w > 1.3:
             crop = True
             crop_size = max(box_w, box_h) / 2
@@ -162,30 +179,7 @@ def generate_box_from_mask(mask):
     for i in range(len(contours)):
         x, y, w, h = cv2.boundingRect(contours[i])
         regions.append([x, y, x+w, y+h])
-
-    # delete inner box
-    new_contours = []
-    regions = np.array(regions)
-    idx = np.zeros((len(regions)))
-    for i in range(len(regions)):
-        for j in range(len(regions)):
-            if i == j or idx[i] == 1 or idx[j] == 1:
-                continue
-            box1, box2 = regions[i], regions[j]
-            if overlap(box1, box2, 0.9):
-            # if overlap(box1, box2, 0.6) or \
-            #     (box2[2] - box2[0] < 2 and overlap(box1, box2, 0.1)):
-                # regions[i][0] = min(box1[0], box2[0])
-                # regions[i][1] = min(box1[1], box2[1])
-                # regions[i][2] = max(box1[2], box2[2])
-                # regions[i][3] = max(box1[3], box2[3])
-                idx[j] = 1
-    regions = regions[idx == 0]
-
-    for i, id in enumerate(idx):
-        if id == 0:
-            new_contours.append(contours[i])
-    return regions, new_contours
+    return regions, contours
 
 
 def enlarge_box(mask_box, image_size, ratio=2):
@@ -264,3 +258,95 @@ def get_box_label(img_path):
     labels = boxes[:, 5]
     
     return y, labels
+
+
+def iou_calc1(boxes1, boxes2):
+    """
+    array
+    :param boxes1: boxes1和boxes2的shape可以不相同，但是需要满足广播机制
+    :param boxes2: 且需要保证最后一维为坐标维，以及坐标的存储结构为(xmin, ymin, xmax, ymax)
+    :return: 返回boxes1和boxes2的IOU，IOU的shape为boxes1和boxes2广播后的shape[:-1]
+    """
+    boxes1 = np.array(boxes1)
+    boxes2 = np.array(boxes2)
+
+    boxes1_area = (boxes1[..., 2] - boxes1[..., 0]) * (boxes1[..., 3] - boxes1[..., 1])
+    boxes2_area = (boxes2[..., 2] - boxes2[..., 0]) * (boxes2[..., 3] - boxes2[..., 1])
+
+    # 计算出boxes1和boxes2相交部分的左上角坐标、右下角坐标
+    left_up = np.maximum(boxes1[..., :2], boxes2[..., :2])
+    right_down = np.minimum(boxes1[..., 2:], boxes2[..., 2:])
+
+    # 计算出boxes1和boxes2相交部分的宽、高
+    # 因为两个boxes没有交集时，(right_down - left_up) < 0，所以maximum可以保证当两个boxes没有交集时，它们之间的iou为0
+    inter_section = np.maximum(right_down - left_up, 0.0)
+    inter_area = inter_section[..., 0] * inter_section[..., 1]
+    union_area = boxes1_area + 1e-16 + boxes2_area - inter_area
+    IOU = 1.0 * inter_area / union_area
+    return IOU
+
+
+def iou_calc2(boxes1, boxes2):
+    """
+    array
+    :param boxes1: boxes1和boxes2的shape可以不相同，但是需要满足广播机制
+    :param boxes2: 且需要保证最后一维为坐标维，以及坐标的存储结构为(xmin, ymin, xmax, ymax)
+    :return: 返回boxes1和boxes2的IOU，IOU的shape为boxes1和boxes2广播后的shape[:-1]
+    """
+    boxes1 = np.array(boxes1)
+    boxes2 = np.array(boxes2)
+
+    boxes1_area = (boxes1[..., 2] - boxes1[..., 0]) * (boxes1[..., 3] - boxes1[..., 1])
+    boxes2_area = (boxes2[..., 2] - boxes2[..., 0]) * (boxes2[..., 3] - boxes2[..., 1])
+
+    # 计算出boxes1和boxes2相交部分的左上角坐标、右下角坐标
+    left_up = np.maximum(boxes1[..., :2], boxes2[..., :2])
+    right_down = np.minimum(boxes1[..., 2:], boxes2[..., 2:])
+
+    # 计算出boxes1和boxes2相交部分的宽、高
+    # 因为两个boxes没有交集时，(right_down - left_up) < 0，所以maximum可以保证当两个boxes没有交集时，它们之间的iou为0
+    inter_section = np.maximum(right_down - left_up, 0.0)
+    inter_area = inter_section[..., 0] * inter_section[..., 1]
+    IOU = 1.0 * inter_area / boxes2_area
+    return IOU
+
+
+def nms(prediction, score_threshold=0.005, iou_threshold=0.5):
+    """
+    :param prediction:
+    (x, y, w, h, conf, cls)
+    :return: best_bboxes
+    """
+    prediction = np.array(prediction)
+    prediction[:, [2, 3]] = prediction[:, [0, 1]] + prediction[:, [2, 3]]
+    detections = prediction[(-prediction[:,4]).argsort()[:1000]]
+    # Iterate through all predicted classes
+    unique_labels = np.unique(detections[:, -1])
+
+    best_bboxes = []
+    for cls in unique_labels:
+        cls_mask = (detections[:, 5] == cls)
+        cls_bboxes = detections[cls_mask]
+
+        # python code
+        while len(cls_bboxes) > 0:
+            best_bbox = cls_bboxes[0]
+            best_bboxes.append(best_bbox)
+            cls_bboxes = cls_bboxes[1:]
+            # iou
+            iou = iou_calc1(best_bbox[np.newaxis, :4], cls_bboxes[:, :4])
+            iou_mask = iou > iou_threshold
+             # overlap
+            overlap = iou_calc2(best_bbox[np.newaxis, :4], cls_bboxes[:, :4])
+            overlap_mask = overlap > 0.95
+
+            weight = np.ones((len(iou),), dtype=np.float32)
+            weight[iou_mask] = 0.0
+            weight[overlap_mask] = 0.0
+           
+            cls_bboxes[:, 4] = cls_bboxes[:, 4] * weight
+            score_mask = cls_bboxes[:, 4] > score_threshold
+            cls_bboxes = cls_bboxes[score_mask]
+    best_bboxes = np.array(best_bboxes)
+    best_bboxes[:, [2, 3]] = best_bboxes[:, [2, 3]] - best_bboxes[:, [0, 1]]
+    return best_bboxes
