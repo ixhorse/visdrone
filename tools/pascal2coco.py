@@ -48,20 +48,9 @@ import xmltodict
 import mmcv
 import concurrent.futures
 
+from datasets import VisDrone
+
 logger = logging.getLogger(__name__)
-
-home = os.path.expanduser('~')
-
-root_datadir = os.path.join(home, 'data/visdrone2019')
-
-dest_datadir = root_datadir + '/detect_voc'
-image_dir = dest_datadir + '/JPEGImages'
-list_dir = dest_datadir + '/ImageSets/Main'
-anno_dir = dest_datadir + '/Annotations'
-
-coco_dir = root_datadir + '/detect_coco'
-coco_imgdir = coco_dir + '/images'
-coco_annodir = coco_dir + '/annotations'
 
 def _copy(src_image, dest_path):
     shutil.copy(src_image, dest_path)
@@ -169,14 +158,23 @@ class PASCALVOC2COCO(object):
 
 
 if __name__ == '__main__':
+    dataset = VisDrone()
+    voc_dir = dataset.detect_voc_dir
+    image_dir = voc_dir + '/JPEGImages'
+    list_dir = voc_dir + '/ImageSets/Main'
+    anno_dir = voc_dir + '/Annotations'
+
+    coco_dir = dataset.detect_coco_dir
+    coco_imgdir = coco_dir + '/images'
+    coco_annodir = coco_dir + '/annotations'
+
     if not os.path.exists(coco_dir):
         os.mkdir(coco_dir)
         os.mkdir(coco_imgdir)
         os.mkdir(coco_annodir)
     
-
     converter = PASCALVOC2COCO()
-    devkit_path = dest_datadir
+    devkit_path = voc_dir
 
     for split in ['val']:
         converter.convert(devkit_path, split)

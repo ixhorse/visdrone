@@ -3,16 +3,16 @@ import cv2
 import numpy as np
 from glob import glob
 from tqdm import tqdm
-from path import Path
 import utils
 import pdb
 
-dbroot = Path.db_root_dir()
-
-src_valdir = dbroot + '/VisDrone2019-DET-val'
-mask_path = '../pytorch-deeplab-xception/run/mask'
+from datasets import VisDrone
 
 def main():
+    dataset = VisDrone()
+    src_valdir = dbroot + '/VisDrone2019-DET-val'
+    mask_path = '../pytorch-deeplab-xception/run/mask'
+
     label_object = []
     detect_object = []
     mask_object = []

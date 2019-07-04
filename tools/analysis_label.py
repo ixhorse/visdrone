@@ -5,22 +5,10 @@ import glob
 import numpy as np
 from tqdm import tqdm
 import xml.etree.ElementTree as ET
-from path import Path
 import utils
-
 import pdb
-import traceback
 
-dbroot = Path.db_root_dir()
-
-src_traindir = dbroot + '/VisDrone2019-DET-train'
-src_valdir = dbroot + '/VisDrone2019-DET-val'
-src_testdir = dbroot + '/VisDrone2019-DET-test-challenge'
-
-voc_datadir = dbroot + '/detect_voc'
-image_dir = voc_datadir + '/JPEGImages'
-anno_dir = voc_datadir + '/Annotations'
-list_dir = voc_datadir + '/ImageSets/Main'
+from datasets import VisDrone
 
 def parse_xml(file):
     xml = ET.parse(file).getroot()
@@ -43,11 +31,17 @@ def parse_xml(file):
 
 
 if __name__ == '__main__':
-    train_list = glob.glob(src_traindir + '/images/*.jpg')
+    dataset = VisDrone()
+    voc_dir = dataset.detect_voc_dir
+    image_dir = voc_dir + '/JPEGImages'
+    anno_dir = voc_dir + '/Annotations'
+    list_dir = voc_dir + '/ImageSets/Main'
+
+    train_list = dataset.get_imglist('train')
 
     label_count = {i+1 : 0 for i in range(10)}
     for img_path in tqdm(train_list, ncols=80):
-        bboxes, labels = utils.get_box_label(img_path)
+        bboxes, labels = dataset.get_gtbox(img_path)
         for cid in labels:
             label_count[cid] += 1
     print(label_count)
