@@ -44,7 +44,7 @@ class Tester(object):
         print("=> loaded checkpoint '{}'".format(args.weight))
 
         self.show = False
-        self.outdir = 'run/mask'
+        self.outdir = 'run/mask-val'
         if not self.show:
             if os.path.exists(self.outdir):
                 shutil.rmtree(self.outdir)
@@ -95,7 +95,6 @@ class Tester(object):
 def main():
     parser = argparse.ArgumentParser(description="PyTorch DeeplabV3Plus Training")
     parser.add_argument('--backbone', type=str, default='resnet',
-                        choices=['resnet', 'xception', 'drn', 'mobilenet'],
                         help='backbone name (default: resnet)')
     parser.add_argument('--out-stride', type=int, default=16,
                         help='network output stride (default: 8)')

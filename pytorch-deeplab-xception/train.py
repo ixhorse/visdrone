@@ -56,7 +56,7 @@ class Trainer(object):
             weight = torch.from_numpy(weight.astype(np.float32))
             print(weight)
         else:
-            weight = torch.tensor([5, 5]).float()
+            weight = torch.tensor([1, 2]).float()
         self.criterion = SegmentationLosses(weight=weight, cuda=args.cuda).build_loss(mode=args.loss_type)
         self.model, self.optimizer = model, optimizer
         
@@ -187,10 +187,9 @@ class Trainer(object):
 def main():
     parser = argparse.ArgumentParser(description="PyTorch DeeplabV3Plus Training")
     parser.add_argument('--backbone', type=str, default='resnet',
-                        choices=['resnet', 'xception', 'drn', 'mobilenet'],
                         help='backbone name (default: resnet)')
     parser.add_argument('--out-stride', type=int, default=16,
-                        help='network output stride (default: 8)')
+                        help='network output stride')
     parser.add_argument('--dataset', type=str, default='pascal',
                         help='dataset name (default: pascal)')
     parser.add_argument('--use-sbd', action='store_true',
