@@ -12,25 +12,12 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt 
 import xml.etree.ElementTree as ET
-from path import Path
 import pdb
 import utils
 
-dbroot = Path.db_root_dir()
+from datasets import VisDrone
 
-src_traindir = dbroot + '/VisDrone2019-DET-train'
-src_valdir = dbroot + '/VisDrone2019-DET-val'
-src_testdir = dbroot + '/VisDrone2019-DET-test-challenge'
-
-dest_datadir = dbroot + '/region_voc'
-image_dir = dest_datadir + '/JPEGImages'
-segmentation_dir = dest_datadir + '/SegmentationClass'
-list_folder = dest_datadir + '/ImageSets'
-
-pred_mask_dir = '../pytorch-deeplab-xception/run/mask'
-
-
-def _vis(img_path):
+def _vis(img_path, dataset):
     img = cv2.imread(img_path)
     height, width = img.shape[:2]
 
@@ -42,7 +29,7 @@ def _vis(img_path):
 
     # bounding box
     img1 = img.copy()
-    gt_box_list, _ = utils.get_box_label(img_path)
+    gt_box_list, _ = dataset.get_gtbox(img_path)
     for box in gt_box_list:
         cv2.rectangle(img1, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 4)
 
@@ -80,8 +67,15 @@ def _vis(img_path):
 
     
 if __name__ == '__main__':
-    val_list = glob.glob(src_valdir + '/images/*.jpg')
+    dataset = VisDrone()
+    dest_datadir = dataset.region_voc_dir
+    image_dir = dest_datadir + '/JPEGImages'
+    segmentation_dir = dest_datadir + '/SegmentationClass'
+    list_folder = dest_datadir + '/ImageSets'
+
+    pred_mask_dir = '../pytorch-deeplab-xception/run/mask-val'
+    val_list = dataset.get_imglist('val')
 
     for img_path in val_list:
-        _vis(img_path)
+        _vis(img_path, dataset)
     

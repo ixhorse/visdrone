@@ -1,6 +1,6 @@
-"""convert VOC format
 """
-
+generate detect dataset in VOC format
+"""
 import cv2
 import random
 import os, sys
@@ -10,29 +10,19 @@ import numpy as np
 from tqdm import tqdm
 from xml.etree.ElementTree import Element, SubElement, tostring
 from xml.dom.minidom import parseString
-from path import Path
+from datasets import VisDrone
 import utils
 
 import pdb
 import traceback
 
-
-random.seed(100)
-
-dbroot = Path.db_root_dir()
-
-src_traindir = dbroot + '/VisDrone2019-DET-train'
-src_valdir = dbroot + '/VisDrone2019-DET-val'
-src_testdir = dbroot + '/VisDrone2019-DET-test-challenge'
-
-region_dir = dbroot + '/region_voc'
-segmentation_dir = region_dir + '/SegmentationClass'
-
-dest_datadir = dbroot + '/detect_voc'
-image_dir = dest_datadir + '/JPEGImages'
-anno_dir = dest_datadir + '/Annotations'
-list_dir = dest_datadir + '/ImageSets/Main'
-
+def parse_args():
+    parser = argparse.ArgumentParser(description="convert to voc dataset")
+    parser.add_argument('mode', type=str, default='train',
+                        choices=['train', 'test'],
+                        help='for train or test')
+    args = parser.parse_args()
+    return args
 
 def generate_region_gt(img_size, region_box, gt_boxes, labels):
     chip_list = []
@@ -113,11 +103,11 @@ def make_xml(chip, box_list, label_list, image_name, tsize):
         node_ymax = SubElement(node_bndbox, 'ymax')
         node_ymax.text = str(int(box_list[i][3] + 1))
 
-
     xml = tostring(node_root, encoding='utf-8')
     dom = parseString(xml)
     # print(xml)
     return dom
+
 
 def write_chip_and_anno(image, imgid, 
     chip_list, chip_gt_list, chip_label_list):
@@ -147,12 +137,14 @@ def write_chip_and_anno(image, imgid,
         
     return chip_loc
 
+
 def generate_imgset(img_list, imgset):
     with open(os.path.join(list_dir, imgset+'.txt'), 'w') as f:
         f.writelines([x + '\n' for x in img_list])
     print('\n%d images in %s set.' % (len(img_list), imgset))
 
-def _worker(img_path):
+
+def _worker(img_path, dataset):
     try:
         imgid = os.path.basename(img_path)[:-4]
         image = cv2.imread(img_path)
@@ -166,7 +158,7 @@ def _worker(img_path):
         region_box = utils.resize_box(region_box, (mask_w, mask_h), (width, height))
         region_box = utils.generate_crop_region(region_box, (width, height))
 
-        gt_boxes, labels = utils.get_box_label(img_path)
+        gt_boxes, labels = dataset.get_gtbox(img_path)
 
         chip_list, chip_gt_list, chip_label_list = generate_region_gt((width, height), region_box, gt_boxes, labels)
         chip_loc = write_chip_and_anno(image, imgid, chip_list, chip_gt_list, chip_label_list)
@@ -178,14 +170,25 @@ def _worker(img_path):
 
 
 def main():
+    args = parse_args()
+
+    dataset = VisDrone()
+    region_dir = dataset.region_voc_dir
+    segmentation_dir = region_dir + '/SegmentationClass'
+
+    dest_datadir = dataset.detect_voc_dir
+    image_dir = dest_datadir + '/JPEGImages'
+    anno_dir = dest_datadir + '/Annotations'
+    list_dir = dest_datadir + '/ImageSets/Main'
+
     if not os.path.exists(dest_datadir):
         os.mkdir(dest_datadir)
         os.mkdir(image_dir)
         os.makedirs(list_dir)
         os.mkdir(anno_dir)
     
-    train_list = glob.glob(src_traindir + '/images/*.jpg')
-    val_list = glob.glob(src_valdir + '/images/*.jpg')
+    train_list = dataset.get_imglist('train')
+    val_list = dataset.get_imglist('val')
     trainval_list = train_list + val_list
 
     for img_list, imgset in zip([val_list], ['val']):
@@ -193,11 +196,12 @@ def main():
         chip_loc = dict()
         for i, img_path in enumerate(img_list):
             img_id = os.path.basename(img_list[i])[:-4]
+            
             sys.stdout.write('\rsearch: {:d}/{:d} {:s}'
                             .format(i + 1, len(img_list), img_id))
             sys.stdout.flush()
 
-            chiplen, loc = _worker(img_path)
+            chiplen, loc = _worker(img_path, dataset)
             for i in range(chiplen):
                 chip_ids.append('%s_%s' % (img_id, i))
             chip_loc.update(loc)

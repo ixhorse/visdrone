@@ -15,21 +15,15 @@ import pandas as pd
 import concurrent.futures
 import pdb
 
-from path import Path
+from datasets import VisDrone
 
-random.seed(100)
-
-dbroot = Path.db_root_dir()
-
-src_traindir = dbroot + '/VisDrone2019-DET-train'
-src_valdir = dbroot + '/VisDrone2019-DET-val'
-src_testdir = dbroot + '/VisDrone2019-DET-test-challenge'
-
-dest_datadir = dbroot + '/region_voc'
-image_dir = dest_datadir + '/JPEGImages'
-segmentation_dir = dest_datadir + '/SegmentationClass'
-annotation_dir = dest_datadir + '/Annotations'
-list_folder = dest_datadir + '/ImageSets'
+def parse_args():
+    parser = argparse.ArgumentParser(description="convert to voc dataset")
+    parser.add_argument('mode', type=str, default='train',
+                        choices=['train', 'test'],
+                        help='for train or test')
+    args = parser.parse_args()
+    return args
 
 # copy train and test images
 def _copy(src_image, dest_path):
@@ -47,24 +41,7 @@ def _resize(src_image, dest_path):
     cv2.imwrite(os.path.join(dest_path, name), img)
 
 
-def get_box(img_path):
-    anno_path = img_path.replace('images', 'annotations')
-    anno_path = anno_path.replace('jpg', 'txt')
-    with open(anno_path, 'r') as f:
-        data = [x.strip().split(',')[:8] for x in f.readlines()]
-        annos = np.array(data)
-
-    boxes = annos[annos[:, 4] == '1'][:, :4].astype(np.int32)
-
-    y = np.zeros_like(boxes)
-    y[:, 0] = boxes[:, 0]
-    y[:, 1] = boxes[:, 1]
-    y[:, 2] = boxes[:, 0] + boxes[:, 2]
-    y[:, 3] = boxes[:, 1] + boxes[:, 3]
-    
-    return y
-
-def _generate_mask(img_path):
+def _generate_mask(img_path, dataset):
     try:
         # image mask
         img_name = os.path.basename(img_path)
@@ -75,7 +52,7 @@ def _generate_mask(img_path):
         mask_w, mask_h = 40, 30
 
         region_mask = np.zeros((mask_h, mask_w), dtype=np.uint8)
-        boxes = get_box(img_path)
+        boxes, _ = dataset.get_gtbox(img_path)
         # for box in boxes:
         #     xmin = np.floor(1.0 * box[0] / width * mask_w).astype(np.int32)
         #     ymin = np.floor(1.0 * box[1] / height * mask_h).astype(np.int32)
@@ -101,11 +78,14 @@ def _generate_mask(img_path):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="convert to voc dataset")
-    parser.add_argument('mode', type=str, default='train',
-                        choices=['train', 'test'],
-                        help='for train or test')
-    args = parser.parse_args()
+    args = parse_args()
+
+    dataset = VisDrone()
+    dest_datadir = dataset.region_voc_dir
+    image_dir = dest_datadir + '/JPEGImages'
+    segmentation_dir = dest_datadir + '/SegmentationClass'
+    annotation_dir = dest_datadir + '/Annotations'
+    list_folder = dest_datadir + '/ImageSets'
 
     if not os.path.exists(dest_datadir):
         os.mkdir(dest_datadir)
@@ -114,9 +94,9 @@ if __name__ == "__main__":
         os.mkdir(annotation_dir)
         os.mkdir(list_folder)
 
-    train_list = glob.glob(src_traindir + '/images/*.jpg')
-    val_list = glob.glob(src_valdir + '/images/*.jpg')
-    test_list = glob.glob(src_testdir + '/images/*.jpg')
+    train_list = dataset.get_imglist('train')
+    val_list = dataset.get_imglist('val')
+    test_list = dataset.get_imglist('test')
     trainval_list = train_list + val_list
   
     if 'train' in args.mode:
@@ -133,7 +113,7 @@ if __name__ == "__main__":
 
         print('generate masks...')
         with concurrent.futures.ThreadPoolExecutor() as exector:
-            exector.map(_generate_mask, trainval_list)
+            exector.map(_generate_mask, trainval_list, [dataset]*len(trainval_list))
         
         print('copy txts...')
         train_anno_list = glob.glob(src_traindir + '/annotations/*.txt')
