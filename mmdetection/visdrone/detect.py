@@ -26,7 +26,6 @@ def parse_args():
     parser = argparse.ArgumentParser(description='MMDet test detector')
     parser.add_argument('config', help='test config file path')
     parser.add_argument('checkpoint', help='checkpoint file')
-    parser.add_argument('--chip', action='store_true', help='which test set')
     parser.add_argument('--show', action='store_true', help='show results')
     args = parser.parse_args()
     return args
@@ -80,16 +79,12 @@ def main():
     
     model = init_detector(cfg, args.checkpoint, device='cuda:0')
 
-    dfsign = False
-    chip = args.chip
+    visdrone = True
     # get image list
-    if dfsign:
-        if chip:
-            root_dir = '../data/visdrone2019/detect_voc'
-        else:
-            root_dir = '../data/visdrone2019/detect_voc'
+    if visdrone:
+        root_dir = '../data/visdrone2019/detect_voc'
         root_dir = os.path.expanduser(root_dir)
-        list_file = os.path.join(root_dir, 'ImageSets/Main/val.txt')
+        list_file = os.path.join(root_dir, 'ImageSets/Main/test.txt')
         image_dir = os.path.join(root_dir, 'JPEGImages')
         with open(list_file, 'r') as f:
             images = [x.strip() for x in f.readlines()]
@@ -98,36 +93,36 @@ def main():
         imglist = glob.glob('samples/*.jpg')
 
     classes = VisDroneDataset.CLASSES
-    results = {}
+    results = []
     t0 = time.time()
     for i, preds in enumerate(inference_detector(model, imglist)):
         detect_time = time.time() - t0
-        sys.stdout.write('im_detect: {:d}/{:d} {:s} {:.3f}s   \r'
-                            .format(i + 1, len(imglist), imglist[i].split('/')[-1], detect_time))
+        sys.stdout.write('\r im_detect: {:d}/{:d} {:s} {:.3f}s'
+                        .format(i + 1, len(imglist), imglist[i].split('/')[-1], detect_time))
         sys.stdout.flush()
 
         if args.show:
             show_result(imglist[i], preds, classes)
         else:
-            img_id = imglist[i][:-4]
-            box = np.vstack(preds)
-            if box.shape[0] == 0:
+            img_id = os.path.basename(imglist[i])
+            boxes = np.vstack(preds)
+            if boxes.shape[0] == 0:
                 continue
+            boxes[:, [2, 3]] = boxes[:, [2, 3]] - boxes[:, [0, 1]]
             labels = [
                 np.full(bbox.shape[0], i, dtype=np.int32)
                 for i, bbox in enumerate(preds)
             ]
             labels = np.concatenate(labels)
-            results[img_id] = {'pred_box': box[:, :4],
-                            'pred_score': box[:, 4],
-                            'pred_label': [classes[i] for i in labels]}
+            for box, label in zip(boxes, labels):
+                results.append({'image_id': img_id,
+                                'category_id': label,
+                                'bbox': box[:4],
+                                'score': box[4]})
         t0 = time.time()
 
     if not args.show:
-        if chip:
-            result_file = 'results_chip.json'
-        else:
-            result_file = 'results_detect.json'
+        result_file = 'results_region.json'
         with open(result_file, 'w') as f:
             json.dump(results, f, cls=MyEncoder)
             print('results json saved.')

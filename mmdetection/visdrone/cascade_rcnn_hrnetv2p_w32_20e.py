@@ -194,11 +194,12 @@ test_cfg = dict(
     rcnn=dict(
         score_thr=0.05,
         nms=dict(type='nms', iou_thr=0.5),
-        max_per_img=100),
+        max_per_img=200),
     keep_all_stages=False)
 # dataset settings
+# dataset settings
 dataset_type = 'VisDroneDataset'
-data_root = '../data/visdrone2019/detect_voc'
+data_root = '../data/visdrone2019/detect_coco'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53],
     std=[58.395, 57.12, 57.375],
@@ -210,18 +211,30 @@ data = dict(
         type=dataset_type,
         ann_file=data_root + '/ImageSets/Main/train.txt',
         img_prefix=data_root,
-        img_scale=(1000, 800),
+        img_scale=(1333, 800),
         img_norm_cfg=img_norm_cfg,
         size_divisor=32,
         flip_ratio=0.5,
         with_mask=False,
         with_crowd=True,
-        with_label=True),
+        with_label=True,
+        extra_aug=dict(
+                photo_metric_distortion=dict(
+                    brightness_delta=32,
+                    contrast_range=(0.5, 1.5),
+                    saturation_range=(0.5, 1.5),
+                    hue_delta=18),
+                # expand=dict(
+                #     mean=img_norm_cfg['mean'],
+                #     to_rgb=img_norm_cfg['to_rgb'],
+                #     ratio_range=(1, 4)),
+                random_crop=dict(
+                    min_ious=(0.1, 0.3, 0.5, 0.7, 0.9), min_crop_size=0.3))),
     val=dict(
         type=dataset_type,
         ann_file=data_root + '/ImageSets/Main/val.txt',
         img_prefix=data_root,
-        img_scale=(1000, 800),
+        img_scale=(1333, 1000),
         img_norm_cfg=img_norm_cfg,
         size_divisor=32,
         flip_ratio=0,
@@ -230,9 +243,9 @@ data = dict(
         with_label=True),
     test=dict(
         type=dataset_type,
-        ann_file=data_root + '/ImageSets/Main/val.txt',
-        img_prefix=data_root,
-        img_scale=(1000, 800),
+        ann_file=data_root + '/annotations/instances_val.json',
+        img_prefix=data_root + '/images/val',
+        img_scale=(1333, 1000),
         img_norm_cfg=img_norm_cfg,
         size_divisor=32,
         flip_ratio=0,
@@ -248,7 +261,7 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=500,
     warmup_ratio=1.0 / 3,
-    step=[15])
+    step=[14, 22])
 checkpoint_config = dict(interval=1)
 # yapf:disable
 log_config = dict(
@@ -259,10 +272,10 @@ log_config = dict(
     ])
 # yapf:enable
 # runtime settings
-total_epochs = 18
+total_epochs = 25
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
 work_dir = './work_dirs/cascade_rcnn_hrnetv2p_w32'
 load_from = None
-resume_from = None
+resume_from = './work_dirs/cascade_rcnn_hrnetv2p_w32/epoch_16.pth'
 workflow = [('train', 1)]
