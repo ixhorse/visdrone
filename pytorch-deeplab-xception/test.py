@@ -9,7 +9,7 @@ from tqdm import tqdm
 from mypath import Path
 from dataloaders import make_data_loader
 from modeling.deeplab import *
-from dataloaders.datasets import visdrone
+from dataloaders.datasets import visdrone, hkb
 from torch.utils.data import DataLoader
 import pdb
 
@@ -18,7 +18,10 @@ class Tester(object):
         self.args = args
         
         # Define Dataloader
-        test_set = visdrone.VisDroneSegmentation(args, split='val')
+        if args.dataset == 'visdrone':
+            test_set = visdrone.VisDroneSegmentation(args, split='val')
+        elif args.dataset == 'hkb':
+            test_set = hkb.HKBSegmentation(args, split='val')
         self.nclass = test_set.NUM_CLASSES
         self.test_loader = DataLoader(test_set,
                                 batch_size=args.test_batch_size,
@@ -44,7 +47,7 @@ class Tester(object):
         print("=> loaded checkpoint '{}'".format(args.weight))
 
         self.show = False
-        self.outdir = 'run/mask-val'
+        self.outdir = 'run/mask-hkbval'
         if not self.show:
             if os.path.exists(self.outdir):
                 shutil.rmtree(self.outdir)

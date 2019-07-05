@@ -150,7 +150,7 @@ class Trainer(object):
             target = target.cpu().numpy()
             pred = np.argmax(pred, axis=1)
             # Add batch sample into evaluator
-            self.evaluator.add_batch(target, pred, path)
+            self.evaluator.add_batch(target, pred, path, self.val_loader.dataset)
 
         # Fast test during the training
         Acc = self.evaluator.Pixel_Accuracy()

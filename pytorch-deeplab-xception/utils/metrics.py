@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 import json
-import utils.visdrone_utils as utils
+import utils.dataset_utils as utils
 
 class Evaluator(object):
     def __init__(self, num_class):
@@ -50,12 +50,12 @@ class Evaluator(object):
         confusion_matrix = count.reshape(self.num_class, self.num_class)
         return confusion_matrix
 
-    def _generate_count(self, pre_image, paths):
+    def _generate_count(self, pre_image, paths, dataset):
         for mask_img, img_path in zip(pre_image, paths):
             img = cv2.imread(img_path)
             height, width = img.shape[:2]
 
-            label_box = utils.get_label_box(img_path)
+            label_box = utils.get_label_box(img_path, dataset)
 
             mask_h, mask_w = mask_img.shape[:2]
             mask_box = utils.generate_box_from_mask(mask_img.astype(np.uint8))
@@ -74,10 +74,10 @@ class Evaluator(object):
             self.detect_object.append(count)
             self.mask_object.append(len(mask_box))
 
-    def add_batch(self, gt_image, pre_image, paths):
+    def add_batch(self, gt_image, pre_image, paths, dataset):
         assert gt_image.shape == pre_image.shape
         self.confusion_matrix += self._generate_matrix(gt_image, pre_image)
-        self._generate_count(pre_image, paths)
+        self._generate_count(pre_image, paths, dataset)
         
 
     def reset(self):

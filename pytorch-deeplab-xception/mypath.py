@@ -15,7 +15,9 @@ class Path(object):
         elif dataset == 'tt100k':
             return os.path.join(user_home, 'data/TT100K/TT100K_voc')  # folder that contains VOCdevkit/
         elif dataset == 'visdrone':
-            return os.path.join(user_home, 'data/visdrone2019/region_voc')  # folder that contains VOCdevkit/.   
+            return os.path.join(user_home, 'data/visdrone2019/region_voc')
+        elif dataset == 'hkb':
+            return os.path.join(user_home, 'data/HKB/region_voc')
         else:
             print('Dataset {} not available.'.format(dataset))
             raise NotImplementedError
