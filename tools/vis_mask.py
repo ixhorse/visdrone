@@ -7,7 +7,7 @@ import sys
 import cv2
 import glob
 import shutil
-import pandas as pd
+import argparse
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt 
@@ -15,7 +15,14 @@ import xml.etree.ElementTree as ET
 import pdb
 import utils
 
-from datasets import VisDrone
+from datasets import get_dataset
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="show mask results")
+    parser.add_argument('dataset', type=str, default='VisDrone',
+                        choices=['VisDrone', 'HKB'], help='dataset name')
+    args = parser.parse_args()
+    return args
 
 def _vis(img_path, dataset):
     img = cv2.imread(img_path)
@@ -39,7 +46,7 @@ def _vis(img_path, dataset):
     region_box, contours = utils.generate_box_from_mask(pred_mask[:, :, 0])
     resize_region_box = utils.resize_box(region_box, (mask_w, mask_h), (width, height))
     for box in resize_region_box:
-        cv2.rectangle(img2, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 4)
+        cv2.rectangle(img2, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 5)
 
     # region postprocess
     img3 = img.copy()
@@ -47,13 +54,13 @@ def _vis(img_path, dataset):
     resize_region_box = utils.resize_box(new_regions, (mask_w, mask_h), (width, height))
     # new_regions = utils.generate_crop_region(resize_region_box, (width, height))
     for box in resize_region_box:
-        cv2.rectangle(img3, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 4)
+        cv2.rectangle(img3, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 5)
 
     img4 = img.copy()
     # resize_region_box = utils.resize_box(temp, (mask_w, mask_h), (width, height))
     new_regions = utils.generate_crop_region(resize_region_box, (width, height))
     for box in new_regions:
-        cv2.rectangle(img4, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 4)
+        cv2.rectangle(img4, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 5)
 
     plt.subplot(2, 3, 1); plt.imshow(img1[:, :, [2,1,0]])
     plt.subplot(2, 3, 2); plt.imshow(img2[:, :, [2,1,0]])
@@ -67,13 +74,14 @@ def _vis(img_path, dataset):
 
     
 if __name__ == '__main__':
-    dataset = VisDrone()
+    args = parse_args()
+    dataset = get_dataset(args.dataset)
     dest_datadir = dataset.region_voc_dir
     image_dir = dest_datadir + '/JPEGImages'
     segmentation_dir = dest_datadir + '/SegmentationClass'
     list_folder = dest_datadir + '/ImageSets'
 
-    pred_mask_dir = '../pytorch-deeplab-xception/run/mask-val'
+    pred_mask_dir = '../pytorch-deeplab-xception/run/mask-hkbval'
     val_list = dataset.get_imglist('val')
 
     for img_path in val_list:

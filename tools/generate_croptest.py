@@ -6,17 +6,25 @@ import os, sys
 import cv2
 import glob
 import json
-import random
+import argparse
 import numpy as np
 from tqdm import tqdm
 from operator import add
 import utils
 import pdb
 
-from datasets import VisDrone
+from datasets import get_dataset
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="show mask results")
+    parser.add_argument('dataset', type=str, default='VisDrone',
+                        choices=['VisDrone', 'HKB'], help='dataset name')
+    args = parser.parse_args()
+    return args
 
 if __name__ == '__main__':
-    dataset = VisDrone()
+    args = parse_args()
+    dataset = get_dataset(args.dataset)
     dest_datadir = dataset.detect_voc_dir
     image_dir = dest_datadir + '/JPEGImages'
     anno_dir = dest_datadir + '/Annotations'

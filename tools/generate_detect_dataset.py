@@ -6,23 +6,36 @@ import random
 import os, sys
 import glob
 import json
+import argparse
 import numpy as np
 from tqdm import tqdm
 from xml.etree.ElementTree import Element, SubElement, tostring
 from xml.dom.minidom import parseString
-from datasets import VisDrone
 import utils
-
-import pdb
 import traceback
+import pdb
+
+from datasets import get_dataset
 
 def parse_args():
     parser = argparse.ArgumentParser(description="convert to voc dataset")
+    parser.add_argument('dataset', type=str, default='VisDrone',
+                        choices=['VisDrone', 'HKB'], help='dataset name')
     parser.add_argument('mode', type=str, default='train',
-                        choices=['train', 'test'],
-                        help='for train or test')
+                        choices=['train', 'test'], help='for train or test')
     args = parser.parse_args()
     return args
+
+args = parse_args()
+dataset = get_dataset(args.dataset)
+
+region_dir = dataset.region_voc_dir
+segmentation_dir = region_dir + '/SegmentationClass'
+
+dest_datadir = dataset.detect_voc_dir
+image_dir = dest_datadir + '/JPEGImages'
+anno_dir = dest_datadir + '/Annotations'
+list_dir = dest_datadir + '/ImageSets/Main'
 
 def generate_region_gt(img_size, region_box, gt_boxes, labels):
     chip_list = []
@@ -133,8 +146,7 @@ def write_chip_and_anno(image, imgid,
 
         cv2.imwrite(os.path.join(image_dir, img_name), chip_img)
         with open(os.path.join(anno_dir, xml_name), 'w') as f:
-            f.write(dom.toprettyxml(indent='\t', encoding='utf-8').decode('utf-8'))
-        
+            f.write(dom.toprettyxml(indent='\t', encoding='utf-8').decode('utf-8')) 
     return chip_loc
 
 
@@ -145,42 +157,25 @@ def generate_imgset(img_list, imgset):
 
 
 def _worker(img_path, dataset):
-    try:
-        imgid = os.path.basename(img_path)[:-4]
-        image = cv2.imread(img_path)
-        height, width = image.shape[:2]
+    imgid = os.path.basename(img_path)[:-4]
+    image = cv2.imread(img_path)
+    height, width = image.shape[:2]
 
-        mask_path = os.path.join(segmentation_dir, imgid+'_region.png')
-        mask_img = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-        mask_h, mask_w = mask_img.shape[:2]
-        region_box, contours = utils.generate_box_from_mask(mask_img)
-        region_box = utils.region_postprocess(region_box, contours, (mask_w, mask_h))
-        region_box = utils.resize_box(region_box, (mask_w, mask_h), (width, height))
-        region_box = utils.generate_crop_region(region_box, (width, height))
+    mask_path = os.path.join(segmentation_dir, imgid+'_region.png')
+    mask_img = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+    mask_h, mask_w = mask_img.shape[:2]
+    region_box, contours = utils.generate_box_from_mask(mask_img)
+    region_box = utils.region_postprocess(region_box, contours, (mask_w, mask_h))
+    region_box = utils.resize_box(region_box, (mask_w, mask_h), (width, height))
+    region_box = utils.generate_crop_region(region_box, (width, height))
 
-        gt_boxes, labels = dataset.get_gtbox(img_path)
+    gt_boxes, labels = dataset.get_gtbox(img_path)
 
-        chip_list, chip_gt_list, chip_label_list = generate_region_gt((width, height), region_box, gt_boxes, labels)
-        chip_loc = write_chip_and_anno(image, imgid, chip_list, chip_gt_list, chip_label_list)
-        return len(chip_list), chip_loc
-        # _progress()
-    except Exception:
-        traceback.print_exc()
-        os._exit(0) 
+    chip_list, chip_gt_list, chip_label_list = generate_region_gt((width, height), region_box, gt_boxes, labels)
+    chip_loc = write_chip_and_anno(image, imgid, chip_list, chip_gt_list, chip_label_list)
+    return len(chip_list), chip_loc    
 
-
-def main():
-    args = parse_args()
-
-    dataset = VisDrone()
-    region_dir = dataset.region_voc_dir
-    segmentation_dir = region_dir + '/SegmentationClass'
-
-    dest_datadir = dataset.detect_voc_dir
-    image_dir = dest_datadir + '/JPEGImages'
-    anno_dir = dest_datadir + '/Annotations'
-    list_dir = dest_datadir + '/ImageSets/Main'
-
+if __name__ == '__main__':
     if not os.path.exists(dest_datadir):
         os.mkdir(dest_datadir)
         os.mkdir(image_dir)
@@ -191,13 +186,13 @@ def main():
     val_list = dataset.get_imglist('val')
     trainval_list = train_list + val_list
 
-    for img_list, imgset in zip([val_list], ['val']):
+    for img_list, imgset in zip([train_list], ['train']):
         chip_ids = []
         chip_loc = dict()
         for i, img_path in enumerate(img_list):
             img_id = os.path.basename(img_list[i])[:-4]
             
-            sys.stdout.write('\rsearch: {:d}/{:d} {:s}'
+            sys.stdout.write('\rcomplete: {:d}/{:d} {:s}'
                             .format(i + 1, len(img_list), img_id))
             sys.stdout.flush()
 
@@ -211,7 +206,4 @@ def main():
         # write chip loc json
         with open(os.path.join(anno_dir, '%s_chip.json'%imgset), 'w') as f:
             json.dump(chip_loc, f)
-            print('write loc json.')
-
-if __name__ == '__main__':
-    main()
+            print('write loc json')

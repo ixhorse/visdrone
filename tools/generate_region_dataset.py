@@ -15,13 +15,14 @@ import pandas as pd
 import concurrent.futures
 import pdb
 
-from datasets import VisDrone
+from datasets import get_dataset
 
 def parse_args():
     parser = argparse.ArgumentParser(description="convert to voc dataset")
+    parser.add_argument('dataset', type=str, default='VisDrone',
+                        choices=['VisDrone', 'HKB'], help='dataset name')
     parser.add_argument('mode', type=str, default='train',
-                        choices=['train', 'test'],
-                        help='for train or test')
+                        choices=['train', 'test'], help='for train or test')
     args = parser.parse_args()
     return args
 
@@ -80,7 +81,7 @@ def _generate_mask(img_path, dataset):
 if __name__ == "__main__":
     args = parse_args()
 
-    dataset = VisDrone()
+    dataset = get_dataset(args.dataset)
     dest_datadir = dataset.region_voc_dir
     image_dir = dest_datadir + '/JPEGImages'
     segmentation_dir = dest_datadir + '/SegmentationClass'
@@ -93,13 +94,12 @@ if __name__ == "__main__":
         os.mkdir(segmentation_dir)
         os.mkdir(annotation_dir)
         os.mkdir(list_folder)
-
-    train_list = dataset.get_imglist('train')
-    val_list = dataset.get_imglist('val')
-    test_list = dataset.get_imglist('test')
-    trainval_list = train_list + val_list
   
     if 'train' in args.mode:
+        train_list = dataset.get_imglist('train')
+        val_list = dataset.get_imglist('val')
+        trainval_list = train_list + val_list
+
         with open(os.path.join(list_folder, 'train.txt'), 'w') as f:
             temp = [os.path.basename(x)[:-4]+'\n' for x in train_list]
             f.writelines(temp)
@@ -115,9 +115,9 @@ if __name__ == "__main__":
         with concurrent.futures.ThreadPoolExecutor() as exector:
             exector.map(_generate_mask, trainval_list, [dataset]*len(trainval_list))
         
-        print('copy txts...')
-        train_anno_list = glob.glob(src_traindir + '/annotations/*.txt')
-        val_anno_list = glob.glob(src_valdir + '/annotations/*.txt')
+        print('copy box annos...')
+        train_anno_list = dataset.get_annolist('train')
+        val_anno_list = dataset.get_annolist('val')
         trainval_anno_list = train_anno_list + val_anno_list
         with concurrent.futures.ThreadPoolExecutor() as exector:
             exector.map(_copy, trainval_anno_list, [annotation_dir]*len(trainval_anno_list))
@@ -125,6 +125,7 @@ if __name__ == "__main__":
         print('done.')    
 
     if 'test' in args.mode:
+        test_list = dataset.get_imglist('test')
         with open(os.path.join(list_folder, 'test.txt'), 'w') as f:
             temp = [os.path.basename(x)[:-4]+'\n' for x in test_list]
             f.writelines(temp)
