@@ -17,13 +17,15 @@ from mmcv.runner import load_checkpoint, parallel_test, obj_from_dict
 from mmcv.parallel import scatter, collate, MMDataParallel
 
 from mmdet import datasets
-from mmdet.datasets import VisDroneDataset
+from mmdet.datasets import VisDroneDataset, HKBDataset
 from mmdet.models import build_detector, detectors
 from mmdet.apis import init_detector, inference_detector, show_result
 import pdb
 
 def parse_args():
     parser = argparse.ArgumentParser(description='MMDet test detector')
+    parser.add_argument('dataset', type=str, default='VisDrone',
+                        choices=['VisDrone', 'HKB'], help='dataset name')
     parser.add_argument('config', help='test config file path')
     parser.add_argument('checkpoint', help='checkpoint file')
     parser.add_argument('--show', action='store_true', help='show results')
@@ -79,20 +81,20 @@ def main():
     
     model = init_detector(cfg, args.checkpoint, device='cuda:0')
 
-    visdrone = True
     # get image list
-    if visdrone:
+    if args.dataset == 'VisDrone':
         root_dir = '../data/visdrone2019/detect_voc'
-        root_dir = os.path.expanduser(root_dir)
-        list_file = os.path.join(root_dir, 'ImageSets/Main/test.txt')
-        image_dir = os.path.join(root_dir, 'JPEGImages')
-        with open(list_file, 'r') as f:
-            images = [x.strip() for x in f.readlines()]
-        imglist = [os.path.join(image_dir, x+'.jpg') for x in images]
-    else:
-        imglist = glob.glob('samples/*.jpg')
+        classes = VisDroneDataset.CLASSES
+    elif args.dataset == 'HKB':
+        root_dir = '../data/HKB/detect_voc'
+        classes = HKBDataset.CLASSES
 
-    classes = VisDroneDataset.CLASSES
+    list_file = os.path.join(root_dir, 'ImageSets/Main/test.txt')
+    image_dir = os.path.join(root_dir, 'JPEGImages')
+    with open(list_file, 'r') as f:
+        images = [x.strip() for x in f.readlines()]
+    imglist = [os.path.join(image_dir, x+'.jpg') for x in images]
+
     results = []
     t0 = time.time()
     for i, preds in enumerate(inference_detector(model, imglist)):
@@ -122,7 +124,7 @@ def main():
         t0 = time.time()
 
     if not args.show:
-        result_file = 'results_region.json'
+        result_file = 'results_region_%s.json' % args.dataset.lower()
         with open(result_file, 'w') as f:
             json.dump(results, f, cls=MyEncoder)
             print('results json saved.')

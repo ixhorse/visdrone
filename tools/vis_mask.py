@@ -60,7 +60,7 @@ def _vis(img_path, dataset):
     # resize_region_box = utils.resize_box(temp, (mask_w, mask_h), (width, height))
     new_regions = utils.generate_crop_region(resize_region_box, (width, height))
     for box in new_regions:
-        cv2.rectangle(img4, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 5)
+        cv2.rectangle(img4, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 10)
 
     plt.subplot(2, 3, 1); plt.imshow(img1[:, :, [2,1,0]])
     plt.subplot(2, 3, 2); plt.imshow(img2[:, :, [2,1,0]])
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     segmentation_dir = dest_datadir + '/SegmentationClass'
     list_folder = dest_datadir + '/ImageSets'
 
-    pred_mask_dir = '../pytorch-deeplab-xception/run/mask-hkbval'
+    pred_mask_dir = '../pytorch-deeplab-xception/run/mask-%sval' % args.dataset.lower()
     val_list = dataset.get_imglist('val')
 
     for img_path in val_list:

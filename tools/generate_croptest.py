@@ -29,7 +29,7 @@ if __name__ == '__main__':
     image_dir = dest_datadir + '/JPEGImages'
     anno_dir = dest_datadir + '/Annotations'
     list_dir = dest_datadir + '/ImageSets/Main'
-    mask_path = '../pytorch-deeplab-xception/run/mask'
+    mask_path = '../pytorch-deeplab-xception/run/mask-hkbval'
 
     if not os.path.exists(dest_datadir):
         os.mkdir(dest_datadir)
@@ -37,7 +37,7 @@ if __name__ == '__main__':
         os.makedirs(list_dir)
         os.mkdir(anno_dir)
 
-    test_list = dataset.get_imglist(split = 'test')
+    test_list = dataset.get_imglist(split = 'val')
 
     chip_loc = {}
     chip_name_list = []
@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
         for i, chip in enumerate(region_box):
             chip_img = origin_img[chip[1]:chip[3], chip[0]:chip[2], :].copy()
-            chip_name = '%s_%d' % (imgid, i)
+            chip_name = '%s_val%d' % (imgid, i)
             cv2.imwrite(os.path.join(image_dir, '%s.jpg'%chip_name), chip_img)
             chip_name_list.append(chip_name)
 
