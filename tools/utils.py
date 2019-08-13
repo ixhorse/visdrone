@@ -294,14 +294,13 @@ def iou_calc2(boxes1, boxes2):
     return IOU
 
 
-def nms(prediction, score_threshold=0.005, iou_threshold=0.5):
+def nms(prediction, score_threshold=0.005, iou_threshold=0.5, overlap_threshold=0.95):
     """
     :param prediction:
     (x, y, w, h, conf, cls)
     :return: best_bboxes
     """
     prediction = np.array(prediction)
-    prediction[:, [2, 3]] = prediction[:, [0, 1]] + prediction[:, [2, 3]]
     detections = prediction[(-prediction[:,4]).argsort()[:1000]]
     # Iterate through all predicted classes
     unique_labels = np.unique(detections[:, -1])
@@ -321,7 +320,7 @@ def nms(prediction, score_threshold=0.005, iou_threshold=0.5):
             iou_mask = iou > iou_threshold
              # overlap
             overlap = iou_calc2(best_bbox[np.newaxis, :4], cls_bboxes[:, :4])
-            overlap_mask = overlap > 0.95
+            overlap_mask = overlap > overlap_threshold
 
             weight = np.ones((len(iou),), dtype=np.float32)
             weight[iou_mask] = 0.0
@@ -331,7 +330,6 @@ def nms(prediction, score_threshold=0.005, iou_threshold=0.5):
             score_mask = cls_bboxes[:, 4] > score_threshold
             cls_bboxes = cls_bboxes[score_mask]
     best_bboxes = np.array(best_bboxes)
-    best_bboxes[:, [2, 3]] = best_bboxes[:, [2, 3]] - best_bboxes[:, [0, 1]]
     return best_bboxes
 
 

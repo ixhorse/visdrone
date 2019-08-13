@@ -2,4 +2,5 @@
 .vscode
 __pycache__/
 tools/DET_results-*
+tools/hkb_det_save
 tools/*.json
