@@ -3,4 +3,6 @@
 __pycache__/
 tools/DET_results-*
 tools/hkb_det_save
+tools/hkb_det_txt
 tools/*.json
+tools/*.zip

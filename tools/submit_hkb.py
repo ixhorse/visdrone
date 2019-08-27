@@ -61,7 +61,7 @@ if __name__ == '__main__':
     detect_vocdir = dataset.detect_voc_dir
     detect_anno_dir = detect_vocdir + '/Annotations'
 
-    loc_file = detect_anno_dir + '/%s_chip.json' % args.split
+    loc_file = detect_anno_dir + '/test_chip.json'
     result_file = '../mmdetection/visdrone/results_region_hkb.json'
 
     with open(result_file, 'r') as f:
@@ -100,9 +100,19 @@ if __name__ == '__main__':
         detections[img_name] = det
 
     # save detections
-    with open('results_full_hkb.json', 'w') as f:
-        json.dump(detections, f, cls=utils.MyEncoder)
-        print('write results json.')
+    img_paths = dataset.get_imglist(split='test')
+    output_dir = 'hkb_det_txt'
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
+    os.mkdir(output_dir)
+    for img_path in img_paths:
+        img_name = os.path.basename(img_path)
+        det = detections[img_name] if img_name in detections else []
+        txt_name = img_name[:-4] + '.txt'
+        with open(os.path.join(output_dir, txt_name), 'w') as f:
+            for bbox in det:
+                bbox = [str(int(x)) for x in bbox[0:4]] + ['Vehicle']
+                f.write(','.join(bbox) + '\n')
 
     if args.eval:
         # read gt
@@ -113,26 +123,30 @@ if __name__ == '__main__':
         # eval
         miss_img = eval(gt, detections)
     
-        if args.save_det:
-            output_dir = 'hkb_det_save'
-            if os.path.exists(output_dir):
-                shutil.rmtree(output_dir)
-            os.mkdir(output_dir)
+    if args.save_det:
+        output_dir = 'hkb_det_save'
+        if os.path.exists(output_dir):
+            shutil.rmtree(output_dir)
+        os.mkdir(output_dir)
 
-            # draw boxes
-            miss_img = ['00010345.jpg', '10000799.jpg', '10004270.jpg', '00013205.jpg', '00011375.jpg', '00000048.jpg', '00010146.jpg', '00010317.jpg', '00011426.jpg', '00010353.jpg', '00010523.jpg', '00011818.jpg', '00011987.jpg', '00011070.jpg', '00010977.jpg', '00011963.jpg', '00011767.jpg', '00011982.jpg', '00011593.jpg', '00011256.jpg', '00012006.jpg', '00011491.jpg', '00012930.jpg', '00013086.jpg', '00010530.jpg', '00010017.jpg', '00011602.jpg', '00011485.jpg', '00012637.jpg', '00013098.jpg', '00011812.jpg', '00011991.jpg', '00011776.jpg', '00012445.jpg', '00012683.jpg', '00011204.jpg', '00011265.jpg', '00010722.jpg', '00011928.jpg', '00011577.jpg', '00010117.jpg', '00011280.jpg', '10000169.jpg', '00012667.jpg', '00012046.jpg', '00010038.jpg', '00011824.jpg', '00011766.jpg', '00010171.jpg', '00012836.jpg', '00012374.jpg', '00012665.jpg']
-            for i, img_name in enumerate(miss_img):
-                sys.stdout.write('\rprocess: {:d}/{:d}'.format(i + 1, len(miss_img)))
-                sys.stdout.flush()
+        # draw boxes
+        for i, img_path in enumerate(img_paths):
+            sys.stdout.write('\rprocess: {:d}/{:d}'.format(i + 1, len(img_paths)))
+            sys.stdout.flush()
 
-                img_path = os.path.join(src_imagedir, img_name)
-                img = cv2.imread(img_path)
-                for det in detections[img_name]:
-                    bbox = det[:4]
-                    cv2.rectangle(img, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), (0, 0, 255), 3)
+            img_name = os.path.basename(img_path)
+            img = cv2.imread(img_path)
+            
+            if not img_name in detections:
+                continue
+            
+            for det in detections[img_name]:
+                bbox = det[:4]
+                cv2.rectangle(img, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), (0, 0, 255), 3)
+            if args.eval:
                 for gt_box in gt[img_name]:
                     bbox = gt_box
                     cv2.rectangle(img, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), (0, 255, 0), 2)
-                for loc in regions[img_name]:
-                    cv2.rectangle(img, (int(loc[0]), int(loc[1])), (int(loc[2]), int(loc[3])), (255, 0, 0), 2)
-                cv2.imwrite(os.path.join(output_dir, os.path.basename(img_path)), img)
+            for loc in regions[img_name]:
+                cv2.rectangle(img, (int(loc[0]), int(loc[1])), (int(loc[2]), int(loc[3])), (255, 0, 0), 2)
+            cv2.imwrite(os.path.join(output_dir, os.path.basename(img_path)), img)

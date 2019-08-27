@@ -60,4 +60,4 @@ if __name__ == '__main__':
     print('recall: %f' % (np.sum(detect_object) / np.sum(label_object)))
     # print('cost avg: %f, std: %f' % (np.mean(pixel_num), np.std(pixel_num)))
     print('detect box avg: %f' %(np.mean(mask_object)))
-    print(undetected_img)
+    print(sorted(undetected_img))

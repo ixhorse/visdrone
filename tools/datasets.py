@@ -90,7 +90,7 @@ class HKB(Dataset):
         elif split == 'val':
             return [os.path.join(self.src_imagedir, x) for x in self.val_list]
         elif split == 'test':
-            return [os.path.join(self.src_imagedir, x) for x in self.val_list]
+            return glob.glob(self.db_root + '/test/*.jpg')
         else:
             raise NotImplementedError
 

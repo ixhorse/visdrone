@@ -64,7 +64,7 @@ class Trainer(object):
         self.evaluator = Evaluator(self.nclass)
         # Define lr scheduler
         self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
-                                            args.epochs, len(self.train_loader))
+                                            args.epochs, len(self.train_loader), 140)
 
         # Using cuda
         if args.cuda:
@@ -180,7 +180,7 @@ class Trainer(object):
         self.saver.save_checkpoint({
             'epoch': epoch + 1,
             'state_dict': self.model.module.state_dict(),
-            'optimizer': self.optimizer.state_dict(),
+            # 'optimizer': self.optimizer.state_dict(),
             'best_pred': self.best_pred,
         }, is_best, 'checkpoint_%d.pth.tar' % (epoch+1))
 

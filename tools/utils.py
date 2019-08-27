@@ -33,6 +33,7 @@ def region_cluster(regions, mask_shape):
 
 def region_split(regions, mask_shape):
     alpha = 1
+    mask_w, mask_h = mask_shape
     new_regions = []
     for box in regions:
         width, height = box[2] - box[0], box[3] - box[1]
@@ -44,6 +45,13 @@ def region_split(regions, mask_shape):
             mid = int(box[1] + height / 2.0)
             new_regions.append([box[0], box[1], box[2], mid + alpha])
             new_regions.append([box[0], mid - alpha, box[2], box[3]])
+        elif width > mask_w * 0.6 and height > 0.7:
+            mid_w = int(box[0] + width / 2.0)
+            mid_h = int(box[1] + height / 2.0)
+            new_regions.append([box[0], box[1], mid_w + alpha, mid_h + alpha])
+            new_regions.append([mid_w - alpha, box[1], box[2], mid_h + alpha])
+            new_regions.append([box[0], mid_h - alpha, mid_w - alpha, box[3]])
+            new_regions.append([mid_w - alpha, mid_h - alpha, box[2], box[3]])
         else:
             new_regions.append(box)
     return new_regions
@@ -100,7 +108,7 @@ def region_postprocess(regions, contours, mask_shape):
     big_regions = []
     for box in regions:
         w, h = box[2] - box[0], box[3] - box[1]
-        if max(w, h) > 12:
+        if max(w, h) > min(mask_w, mask_h) * 0.4:
             big_regions.append(box)
         else:
             small_regions.append(box)
@@ -125,15 +133,16 @@ def generate_crop_region(regions, img_size):
         box_w, box_h = box[2] - box[0], box[3] - box[1]
         center_x, center_y = box[0] + box_w / 2.0, box[1] + box_h / 2.0
         if box_w < min(img_size) * 0.4 and box_h < min(img_size) * 0.4:
-            crop = True
+            refine = True
             crop_size = min(img_size) * 0.2
-        elif box_w / box_h > 1.3 or box_h / box_w > 1.3:
-            crop = True
-            crop_size = max(box_w, box_h) / 2
+        # elif box_w / box_h > 1.3 or box_h / box_w > 1.3:
+        #     refine = True
+        #     crop_size = max(box_w, box_h) / 2
         else:
-            crop = False
+            refine = True
+            crop_size = max(box_w, box_h) / 2
 
-        if crop:
+        if refine:
             center_x = crop_size if center_x < crop_size else center_x
             center_y = crop_size if center_y < crop_size else center_y
             center_x = width - crop_size - 1 if center_x > width - crop_size - 1 else center_x
@@ -216,7 +225,9 @@ def resize_box(box, original_size, dest_size):
     """
     h_ratio = 1.0 * dest_size[1] / original_size[1]
     w_ratio = 1.0 * dest_size[0] / original_size[0]
-    box = np.array(box) * np.array([w_ratio, h_ratio, w_ratio, h_ratio])
+    box = np.array(box)
+    if len(box) > 0:
+        box = box * np.array([w_ratio, h_ratio, w_ratio, h_ratio])
     return list(box.astype(np.int32))
 
 
@@ -301,7 +312,7 @@ def nms(prediction, score_threshold=0.005, iou_threshold=0.5, overlap_threshold=
     :return: best_bboxes
     """
     prediction = np.array(prediction)
-    detections = prediction[(-prediction[:,4]).argsort()[:1000]]
+    detections = prediction[(-prediction[:,4]).argsort()]
     # Iterate through all predicted classes
     unique_labels = np.unique(detections[:, -1])
 

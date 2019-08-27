@@ -19,9 +19,9 @@ class Tester(object):
         
         # Define Dataloader
         if args.dataset == 'visdrone':
-            test_set = visdrone.VisDroneSegmentation(args, split='val')
+            test_set = visdrone.VisDroneSegmentation(args, split=args.split)
         elif args.dataset == 'hkb':
-            test_set = hkb.HKBSegmentation(args, split='val')
+            test_set = hkb.HKBSegmentation(args, split=args.split)
         self.nclass = test_set.NUM_CLASSES
         self.test_loader = DataLoader(test_set,
                                 batch_size=args.test_batch_size,
@@ -46,8 +46,8 @@ class Tester(object):
         self.model.load_state_dict(checkpoint['state_dict'])
         print("=> loaded checkpoint '{}'".format(args.weight))
 
-        self.show = False
-        self.outdir = 'run/mask-hkbval'
+        self.show = True
+        self.outdir = 'run/mask-hkb-%s' % args.split
         if not self.show:
             if os.path.exists(self.outdir):
                 shutil.rmtree(self.outdir)
@@ -58,6 +58,8 @@ class Tester(object):
         t0 = time.time()
         for i, sample in enumerate(self.test_loader):
             images, targets, paths = sample['image'], sample['label'], sample['path']
+            if not '00013870' in paths[0]:
+                continue
             if self.args.cuda:
                 images, target = images.cuda(), targets.cuda()
             with torch.no_grad():
@@ -103,6 +105,8 @@ def main():
                         help='network output stride (default: 8)')
     parser.add_argument('--dataset', type=str, default='visdrone',
                         help='dataset name (default: pascal)')
+    parser.add_argument('--split', type=str, default='test',
+                        help='dataset split (default: test)')
     parser.add_argument('--workers', type=int, default=1,
                         metavar='N', help='dataloader threads')
     parser.add_argument('--base-size', type=int, default=640,

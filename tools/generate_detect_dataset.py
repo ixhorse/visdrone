@@ -168,6 +168,7 @@ def _worker(img_path, dataset):
     region_box = utils.region_postprocess(region_box, contours, (mask_w, mask_h))
     region_box = utils.resize_box(region_box, (mask_w, mask_h), (width, height))
     region_box = utils.generate_crop_region(region_box, (width, height))
+    region_box = np.vstack((region_box, np.array([0, 0, width-1, height-1])))
 
     gt_boxes, labels = dataset.get_gtbox(img_path)
 

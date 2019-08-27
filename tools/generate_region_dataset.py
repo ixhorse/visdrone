@@ -41,6 +41,13 @@ def _resize(src_image, dest_path):
     name = os.path.basename(src_image)
     cv2.imwrite(os.path.join(dest_path, name), img)
 
+def _myaround_up(value):
+    tmp = np.floor(value).astype(np.int32)
+    return tmp + 1 if value - tmp > 0.05 else tmp
+
+def _myaround_down(value):
+    tmp = np.ceil(value).astype(np.int32)
+    return max(0, tmp - 1 if tmp - value > 0.05 else tmp)
 
 def _generate_mask(img_path, dataset):
     try:
@@ -65,11 +72,11 @@ def _generate_mask(img_path, dataset):
         #     ignore_ymax = ymax + 1 if ymax + 1 < mask_h else mask_h - 1
         #     region_mask[ignore_ymin : ignore_ymax+1, ignore_xmin : ignore_xmax+1] = 255
         for box in boxes:
-            xmin = np.floor(1.0 * box[0] / width * mask_w).astype(np.int32)
-            ymin = np.floor(1.0 * box[1] / height * mask_h).astype(np.int32)
-            xmax = np.floor(1.0 * box[2] / width * mask_w).astype(np.int32)
-            ymax = np.floor(1.0 * box[3] / height * mask_h).astype(np.int32)
-            region_mask[ymin : ymax+1, xmin : xmax+1] = 1
+            xmin = _myaround_down(1.0 * box[0] / width * mask_w)
+            ymin = _myaround_down(1.0 * box[1] / height * mask_h)
+            xmax = _myaround_up(1.0 * box[2] / width * mask_w)
+            ymax = _myaround_up(1.0 * box[3] / height * mask_h)
+            region_mask[ymin : ymax, xmin : xmax] = 1
         maskname = os.path.join(segmentation_dir, img_name[:-4] + '_region.png')
         cv2.imwrite(maskname, region_mask)
 

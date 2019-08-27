@@ -192,7 +192,7 @@ test_cfg = dict(
         nms_thr=0.7,
         min_bbox_size=0),
     rcnn=dict(
-        score_thr=0.05,
+        score_thr=0.01,
         nms=dict(type='nms', iou_thr=0.5),
         max_per_img=200),
     keep_all_stages=False)
@@ -224,10 +224,10 @@ data = dict(
                     contrast_range=(0.5, 1.5),
                     saturation_range=(0.5, 1.5),
                     hue_delta=18),
-                # expand=dict(
-                #     mean=img_norm_cfg['mean'],
-                #     to_rgb=img_norm_cfg['to_rgb'],
-                #     ratio_range=(1, 4)),
+                expand=dict(
+                    mean=img_norm_cfg['mean'],
+                    to_rgb=img_norm_cfg['to_rgb'],
+                    ratio_range=(1, 4)),
                 random_crop=dict(
                     min_ious=(0.1, 0.3, 0.5, 0.7, 0.9), min_crop_size=0.3))),
     val=dict(
@@ -261,7 +261,7 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=500,
     warmup_ratio=1.0 / 3,
-    step=[14, 22])
+    step=[20, 28])
 checkpoint_config = dict(interval=1)
 # yapf:disable
 log_config = dict(
@@ -272,10 +272,10 @@ log_config = dict(
     ])
 # yapf:enable
 # runtime settings
-total_epochs = 25
+total_epochs = 32
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
 work_dir = './work_dirs/cascade_rcnn_hrnetv2p_w32'
 load_from = None
-resume_from = './work_dirs/cascade_rcnn_hrnetv2p_w32/epoch_16.pth'
+resume_from = None
 workflow = [('train', 1)]

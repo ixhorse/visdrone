@@ -19,6 +19,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description="show mask results")
     parser.add_argument('dataset', type=str, default='VisDrone',
                         choices=['VisDrone', 'HKB'], help='dataset name')
+    parser.add_argument('--split', type=str, default='test',
+                        help='dataset split (default: test)')
     args = parser.parse_args()
     return args
 
@@ -29,7 +31,7 @@ if __name__ == '__main__':
     image_dir = dest_datadir + '/JPEGImages'
     anno_dir = dest_datadir + '/Annotations'
     list_dir = dest_datadir + '/ImageSets/Main'
-    mask_path = '../pytorch-deeplab-xception/run/mask-hkbval'
+    mask_path = '../pytorch-deeplab-xception/run/mask-%s-%s' % (args.dataset.lower(), args.split)
 
     if not os.path.exists(dest_datadir):
         os.mkdir(dest_datadir)
@@ -37,7 +39,7 @@ if __name__ == '__main__':
         os.makedirs(list_dir)
         os.mkdir(anno_dir)
 
-    test_list = dataset.get_imglist(split = 'val')
+    test_list = dataset.get_imglist(split = args.split)
 
     chip_loc = {}
     chip_name_list = []
@@ -50,13 +52,15 @@ if __name__ == '__main__':
         mask_h, mask_w = mask_img.shape[:2]
 
         region_box, contours = utils.generate_box_from_mask(mask_img)
+        if(len(region_box) == 0):
+            print(img_path)
         region_box = utils.region_postprocess(region_box, contours, (mask_w, mask_h))
         region_box = utils.resize_box(region_box, (mask_w, mask_h), (width, height))
         region_box = utils.generate_crop_region(region_box, (width, height))
 
         for i, chip in enumerate(region_box):
             chip_img = origin_img[chip[1]:chip[3], chip[0]:chip[2], :].copy()
-            chip_name = '%s_val%d' % (imgid, i)
+            chip_name = '%s_%s%d' % (imgid, args.split, i)
             cv2.imwrite(os.path.join(image_dir, '%s.jpg'%chip_name), chip_img)
             chip_name_list.append(chip_name)
 

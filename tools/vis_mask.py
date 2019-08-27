@@ -39,6 +39,14 @@ def _vis(img_path, dataset):
     gt_box_list, _ = dataset.get_gtbox(img_path)
     for box in gt_box_list:
         cv2.rectangle(img1, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 4)
+        cv2.putText(img1, str((box[2], box[3])), (box[0], box[3]), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 4)
+    cv2.putText(img1, str((width, height)), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 4)
+    label_region_box, _ = utils.generate_box_from_mask(label_mask[:, :, 0])
+    print('box', gt_box_list)
+    print('region', label_region_box)
+    label_region_box = utils.resize_box(label_region_box, (40, 30), (width, height))
+    for box in label_region_box:
+        cv2.rectangle(img1, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 5)
 
     # region box
     img2 = img.copy()
@@ -62,12 +70,12 @@ def _vis(img_path, dataset):
     for box in new_regions:
         cv2.rectangle(img4, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 10)
 
-    plt.subplot(2, 3, 1); plt.imshow(img1[:, :, [2,1,0]])
-    plt.subplot(2, 3, 2); plt.imshow(img2[:, :, [2,1,0]])
-    plt.subplot(2, 3, 3); plt.imshow(img3[:, :, [2,1,0]])
-    plt.subplot(2, 3, 4); plt.imshow(label_mask[:, :, [2,1,0]])
-    plt.subplot(2, 3, 5); plt.imshow(pred_mask[:, :, [2,1,0]])
-    plt.subplot(2, 3, 6); plt.imshow(img4[:, :, [2,1,0]])
+    plt.subplot(1, 1, 1); plt.imshow(img1[:, :, [2,1,0]])
+    # plt.subplot(2, 3, 2); plt.imshow(img2[:, :, [2,1,0]])
+    # plt.subplot(2, 3, 3); plt.imshow(img3[:, :, [2,1,0]])
+    # plt.subplot(2, 3, 4); plt.imshow(label_mask[:, :, [2,1,0]])
+    # plt.subplot(2, 3, 5); plt.imshow(pred_mask[:, :, [2,1,0]])
+    # plt.subplot(2, 3, 6); plt.imshow(img4[:, :, [2,1,0]])
     
     plt.show()
     cv2.waitKey(0)

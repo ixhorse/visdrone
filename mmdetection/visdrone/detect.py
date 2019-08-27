@@ -57,7 +57,7 @@ def show_result(img, result, classes, score_thr=0.3, out_file=None):
     for box, label in zip(bboxes, labels):
         if box[-1] < score_thr:
             continue
-        cv2.rectangle(img1, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 1)
+        cv2.rectangle(img1, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 3)
         box_int = [int(x) for x in box[:4]]
         label_text = class_names[
             label] if class_names is not None else 'cls {}'.format(label)
@@ -95,6 +95,9 @@ def main():
         images = [x.strip() for x in f.readlines()]
     imglist = [os.path.join(image_dir, x+'.jpg') for x in images]
 
+    if True:
+        imglist = glob.glob('samples/*.jpg')
+
     results = []
     t0 = time.time()
     for i, preds in enumerate(inference_detector(model, imglist)):
@@ -104,7 +107,7 @@ def main():
         sys.stdout.flush()
 
         if args.show:
-            show_result(imglist[i], preds, classes)
+            show_result(imglist[i], preds, classes, 0.4)
         else:
             img_id = os.path.basename(imglist[i])
             boxes = np.vstack(preds)

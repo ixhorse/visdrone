@@ -186,15 +186,15 @@ train_cfg = dict(
 test_cfg = dict(
     rpn=dict(
         nms_across_levels=False,
-        nms_pre=1000,
-        nms_post=1000,
-        max_num=1000,
+        nms_pre=4000,
+        nms_post=2000,
+        max_num=2000,
         nms_thr=0.7,
         min_bbox_size=0),
     rcnn=dict(
-        score_thr=0.05,
+        score_thr=0.1,
         nms=dict(type='nms', iou_thr=0.5),
-        max_per_img=200),
+        max_per_img=1000),
     keep_all_stages=False)
 # dataset settings
 # dataset settings
@@ -211,7 +211,7 @@ data = dict(
         type=dataset_type,
         ann_file=data_root + '/ImageSets/Main/train.txt',
         img_prefix=data_root,
-        img_scale=(1333, 1000),
+        img_scale=(1100, 1000),
         img_norm_cfg=img_norm_cfg,
         size_divisor=32,
         flip_ratio=0.5,
@@ -272,10 +272,10 @@ log_config = dict(
     ])
 # yapf:enable
 # runtime settings
-total_epochs = 30
+total_epochs = 32
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
 work_dir = './work_dirs/cascade_rcnn_hrnetv2p_hkb'
 load_from = None
-resume_from = './work_dirs/cascade_rcnn_hrnetv2p_hkb/epoch_19.pth'
+resume_from = './work_dirs/cascade_rcnn_hrnetv2p_hkb/epoch_30.pth'
 workflow = [('train', 1)]
