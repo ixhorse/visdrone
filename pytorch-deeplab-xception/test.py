@@ -46,7 +46,7 @@ class Tester(object):
         self.model.load_state_dict(checkpoint['state_dict'])
         print("=> loaded checkpoint '{}'".format(args.weight))
 
-        self.show = True
+        self.show = False
         self.outdir = 'run/mask-hkb-%s' % args.split
         if not self.show:
             if os.path.exists(self.outdir):
@@ -58,8 +58,6 @@ class Tester(object):
         t0 = time.time()
         for i, sample in enumerate(self.test_loader):
             images, targets, paths = sample['image'], sample['label'], sample['path']
-            if not '00013870' in paths[0]:
-                continue
             if self.args.cuda:
                 images, target = images.cuda(), targets.cuda()
             with torch.no_grad():
