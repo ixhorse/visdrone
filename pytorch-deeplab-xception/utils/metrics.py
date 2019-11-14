@@ -61,8 +61,8 @@ class Evaluator(object):
             mask_box = utils.generate_box_from_mask(mask_img.astype(np.uint8))
             mask_box = list(map(utils.resize_box, mask_box,
                             [(mask_w, mask_h)]*len(mask_box),
-                            [(width, height)]*len(mask_box)))
-            mask_box = utils.enlarge_box(mask_box, (width, height), ratio=1.1)
+                            [(2048, 2048)]*len(mask_box)))
+            mask_box = utils.enlarge_box(mask_box, (2048, 2048), ratio=1.1)
 
             count = 0
             for box1 in label_box:

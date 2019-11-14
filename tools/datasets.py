@@ -1,5 +1,6 @@
 import os, sys
 import glob
+import json
 import numpy as np
 import xml.etree.ElementTree as ET
 
@@ -65,6 +66,47 @@ class VisDrone(Dataset):
         
         return y, labels
 
+class TT100K(Dataset):
+    def __init__(self):
+        super(TT100K, self).__init__()
+
+        user_home = self.user_home
+        self.db_root = os.path.join(user_home, 'data/TT100K')
+        self.src_traindir = self.db_root + '/data/train'
+        self.src_valdir = self.db_root + '/data/test'
+        self.src_annofile = self.db_root + '/data/annotations.json'
+        with open(self.src_annofile, 'r') as f:
+            self.annos = json.load(f)
+
+        self.ValidClasses = (
+            'p11', 'pl5', 'pne', 'il60', 'pl80', 'pl100', 'il80', 'po', 'w55',
+            'pl40', 'pn', 'pm55', 'w32', 'pl20', 'p27', 'p26', 'p12', 'i5',
+            'pl120', 'pl60', 'pl30', 'pl70', 'pl50', 'ip', 'pg', 'p10', 'io',
+            'pr40', 'p5', 'p3', 'i2', 'i4', 'ph4', 'wo', 'pm30', 'ph5', 'p23',
+            'pm20', 'w57', 'w13', 'p19', 'w59', 'il100', 'p6', 'ph4.5')
+        self.cls2ind = {self.ValidClasses[i]:i+1 for i in range(len(self.ValidClasses))}
+        self._init_path(self.db_root)
+
+    def get_imglist(self, split='train'):
+        if split == 'train':
+            return glob.glob(self.src_traindir + '/*.jpg')
+        elif split == 'val':
+            return glob.glob(self.src_valdir + '/*.jpg')
+        else:
+            raise('error')
+
+    def get_gtbox(self, img_path):
+        imgid = os.path.basename(img_path)[:-4]
+        img = self.annos["imgs"][imgid]
+        box_all = []
+        label_all = []
+        for obj in img['objects']:
+            box = obj['bbox']
+            if obj['category'] in self.ValidClasses:
+                box = [int(box['xmin']), int(box['ymin']), int(box['xmax']), int(box['ymax'])]
+                box_all.append(list(np.clip(box, 0, 2047)))
+                label_all.append(self.cls2ind[obj['category']])
+        return box_all, label_all
 
 class HKB(Dataset):
     def __init__(self):
@@ -128,7 +170,9 @@ class HKB(Dataset):
             return (width, height), box_all, label_all
 
 def get_dataset(dataset_name):
-    if dataset_name == 'VisDrone':
+    if dataset_name == 'TT100K':
+        return TT100K()
+    elif dataset_name == 'VisDrone':
         return VisDrone()
     elif dataset_name == 'HKB':
         return HKB()

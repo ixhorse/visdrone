@@ -5,7 +5,17 @@ import matplotlib.pyplot as plt
 import xml.etree.ElementTree as ET
 
 def get_label_box(img_path, dataset):
-    if 'VisDrone' in str(dataset):
+    if 'TT100K' in str(dataset):
+        imgid = os.path.basename(img_path)[:-4]
+        img = dataset.annos["imgs"][imgid]
+        box_all = []
+        label_all = []
+        for obj in img['objects']:
+            box = obj['bbox']
+            box = [int(box['xmin']), int(box['ymin']), int(box['xmax']), int(box['ymax'])]
+            box_all.append(list(np.clip(box, 0, 2047)))
+        return box_all
+    elif 'VisDrone' in str(dataset):
         anno_path = img_path.replace('JPEGImages', 'Annotations')
         anno_path = anno_path.replace('jpg', 'txt')
         with open(anno_path, 'r') as f:

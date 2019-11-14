@@ -108,7 +108,7 @@ class RandomScaleCrop(object):
         img = sample['image']
         mask = sample['label']
         # random scale (short edge)
-        short_size = random.randint(int(self.base_size * 0.5), int(self.base_size * 2.0))
+        short_size = random.randint(int(self.base_size * 0.8), int(self.base_size * 1.3))
         w, h = img.size
         if h > w:
             ow = short_size

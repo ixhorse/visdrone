@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 import os
+import json
 from PIL import Image
 import numpy as np
 from torch.utils.data import Dataset
@@ -27,6 +28,9 @@ class TT100KSegmentation(Dataset):
         self._base_dir = base_dir
         self._image_dir = os.path.join(self._base_dir, 'JPEGImages')
         self._cat_dir = os.path.join(self._base_dir, 'SegmentationClass')
+        self.src_annofile = '/home/mcc/data/TT100K/data/annotations.json'
+        with open(self.src_annofile, 'r') as f:
+            self.annos = json.load(f)
 
         if isinstance(split, str):
             self.split = [split]
@@ -48,7 +52,7 @@ class TT100KSegmentation(Dataset):
 
             for ii, line in enumerate(lines):
                 _image = os.path.join(self._image_dir, line + ".jpg")
-                _cat = os.path.join(self._cat_dir, line + "_chip.png")
+                _cat = os.path.join(self._cat_dir, line + "_region.png")
                 assert os.path.isfile(_image)
                 assert os.path.isfile(_cat)
                 self.im_ids.append(line)
@@ -88,8 +92,8 @@ class TT100KSegmentation(Dataset):
             tr.FixedNoMaskResize(size=self.args.crop_size),
             tr.RandomColorJeter(0.3, 0.3, 0.3, 0.3),
             tr.RandomHorizontalFlip(),
-            # tr.RandomScaleCrop(base_size=self.args.base_size, crop_size=self.args.crop_size),
-            tr.RandomGaussianBlur(),
+            # tr.RandomScaleCrop(base_size=self.args.base_size, crop_size=self.args.crop_size[0]),
+            # tr.RandomGaussianBlur(),
             tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             tr.ToTensor()])
 
@@ -97,7 +101,7 @@ class TT100KSegmentation(Dataset):
 
     def transform_val(self, sample):
         composed_transforms = transforms.Compose([
-            # tr.FixScaleCrop(crop_size=self.args.crop_size),
+            # tr.FixScaleCrop(crop_size=self.args.crop_size[0]),
             tr.FixedNoMaskResize(size=self.args.crop_size),
             tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             tr.ToTensor()])
