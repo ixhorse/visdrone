@@ -65,6 +65,9 @@ def region_morphology(contours, mask_shape):
     region_open, _ = generate_box_from_mask(binary_open)
 
     binary_rest = binary ^ binary_open
+    # cv2.imwrite('a.jpg', binary*255)
+    # cv2.imwrite('b.jpg', binary_open*255)
+    # cv2.imwrite('c.jpg', binary_rest*255)
     region_rest, _ = generate_box_from_mask(binary_rest)
 
     regions = []

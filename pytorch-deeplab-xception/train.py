@@ -56,7 +56,7 @@ class Trainer(object):
             weight = torch.from_numpy(weight.astype(np.float32))
             print(weight)
         else:
-            weight = torch.tensor([1, 2]).float()
+            weight = torch.tensor([1, 10]).float()
         self.criterion = SegmentationLosses(weight=weight, cuda=args.cuda).build_loss(mode=args.loss_type)
         self.model, self.optimizer = model, optimizer
         
@@ -64,7 +64,7 @@ class Trainer(object):
         self.evaluator = Evaluator(self.nclass)
         # Define lr scheduler
         self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
-                                            args.epochs, len(self.train_loader), 140)
+                                            args.epochs, len(self.train_loader), 120)
 
         # Using cuda
         if args.cuda:
@@ -267,7 +267,7 @@ def main():
 
     if args.sync_bn is None:
         if args.cuda and len(args.gpu_ids) > 1:
-            args.sync_bn = True
+            args.sync_bn = False
         else:
             args.sync_bn = False
 

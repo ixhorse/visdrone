@@ -20,7 +20,7 @@ from datasets import get_dataset
 def parse_args():
     parser = argparse.ArgumentParser(description="convert to voc dataset")
     parser.add_argument('dataset', type=str, default='VisDrone',
-                        choices=['VisDrone', 'HKB'], help='dataset name')
+                        choices=['TT100K', 'VisDrone', 'HKB'], help='dataset name')
     parser.add_argument('mode', type=str, default='train',
                         choices=['train', 'test'], help='for train or test')
     args = parser.parse_args()
@@ -35,7 +35,7 @@ def _resize(src_image, dest_path):
     img = cv2.imread(src_image)
 
     height, width = img.shape[:2]
-    size = (int(width), int(height))
+    size = (1024, 1024)
 
     img = cv2.resize(img, size, interpolation=cv2.INTER_AREA)
     name = os.path.basename(src_image)
@@ -57,7 +57,7 @@ def _generate_mask(img_path, dataset):
         height, width = img.shape[:2]
         
         # chip mask 40x30, model input size 640x480
-        mask_w, mask_h = 40, 30
+        mask_w, mask_h = 30, 30
 
         region_mask = np.zeros((mask_h, mask_w), dtype=np.uint8)
         boxes, _ = dataset.get_gtbox(img_path)
@@ -87,6 +87,7 @@ def _generate_mask(img_path, dataset):
 
 if __name__ == "__main__":
     args = parse_args()
+    print(args)
 
     dataset = get_dataset(args.dataset)
     dest_datadir = dataset.region_voc_dir
@@ -106,6 +107,7 @@ if __name__ == "__main__":
         train_list = dataset.get_imglist('train')
         val_list = dataset.get_imglist('val')
         trainval_list = train_list + val_list
+        print(len(train_list), len(val_list))
 
         with open(os.path.join(list_folder, 'train.txt'), 'w') as f:
             temp = [os.path.basename(x)[:-4]+'\n' for x in train_list]
@@ -116,18 +118,19 @@ if __name__ == "__main__":
         
         print('copy train_val images....')
         with concurrent.futures.ThreadPoolExecutor() as exector:
-            exector.map(_copy, trainval_list, [image_dir]*len(trainval_list))
+            exector.map(_resize, trainval_list, [image_dir]*len(trainval_list))
 
         print('generate masks...')
         with concurrent.futures.ThreadPoolExecutor() as exector:
             exector.map(_generate_mask, trainval_list, [dataset]*len(trainval_list))
         
-        print('copy box annos...')
-        train_anno_list = dataset.get_annolist('train')
-        val_anno_list = dataset.get_annolist('val')
-        trainval_anno_list = train_anno_list + val_anno_list
-        with concurrent.futures.ThreadPoolExecutor() as exector:
-            exector.map(_copy, trainval_anno_list, [annotation_dir]*len(trainval_anno_list))
+        if args.dataset == 'HKB':
+            print('copy box annos...')
+            train_anno_list = dataset.get_annolist('train')
+            val_anno_list = dataset.get_annolist('val')
+            trainval_anno_list = train_anno_list + val_anno_list
+            with concurrent.futures.ThreadPoolExecutor() as exector:
+                exector.map(_copy, trainval_anno_list, [annotation_dir]*len(trainval_anno_list))
 
         print('done.')    
 

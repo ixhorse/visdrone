@@ -22,17 +22,27 @@ class DeepLab(nn.Module):
 
         self.backbone = build_backbone(backbone, output_stride, BatchNorm)
         self.aspp = build_aspp(backbone, output_stride, BatchNorm)
+        
+        self.link_conv = nn.Sequential(nn.Conv2d(64, 64, kernel_size=1, stride=1, padding=0, bias=False))
+        self.last_conv = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
+                                       BatchNorm(64),
+                                       nn.ReLU(),
+                                       nn.Dropout(0.1),
+                                       nn.Conv2d(64, num_classes, kernel_size=1, stride=1))
+
         # self.link_conv = nn.Sequential(nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
         #                                BatchNorm(64),
         #                                nn.ReLU(),
         #                                nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1, bias=False))
-        self.link_conv = nn.Sequential(nn.Conv2d(64, 128, kernel_size=1, stride=1, padding=0, bias=False))
-        self.last_conv = nn.Sequential(nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1, bias=False),
-                                       BatchNorm(128),
-                                       nn.ReLU(),
-                                    #    nn.Dropout(0.1),
-                                       nn.Conv2d(128, num_classes, kernel_size=1, stride=1))
-        # self.last_conv = nn.Sequential(nn.Conv2d(128, num_classes, kernel_size=1, stride=1))
+        # self.last_conv = nn.Sequential(nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=False),
+        #                                BatchNorm(256),
+        #                                nn.ReLU(),
+        #                                nn.Dropout(0.5),
+        #                                nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=False),
+        #                                BatchNorm(256),
+        #                                nn.ReLU(),
+        #                                nn.Dropout(0.1),
+        #                                nn.Conv2d(256, num_classes, kernel_size=1, stride=1))
 
         self._init_weight()
         if freeze_bn:

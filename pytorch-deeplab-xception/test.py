@@ -9,7 +9,7 @@ from tqdm import tqdm
 from mypath import Path
 from dataloaders import make_data_loader
 from modeling.deeplab import *
-from dataloaders.datasets import visdrone, hkb
+from dataloaders.datasets import tt100k, visdrone, hkb
 from torch.utils.data import DataLoader
 import pdb
 
@@ -18,6 +18,8 @@ class Tester(object):
         self.args = args
         
         # Define Dataloader
+        if args.dataset == 'tt100k':
+            test_set = tt100k.TT100KSegmentation(args, split=args.split)
         if args.dataset == 'visdrone':
             test_set = visdrone.VisDroneSegmentation(args, split=args.split)
         elif args.dataset == 'hkb':
@@ -47,7 +49,7 @@ class Tester(object):
         print("=> loaded checkpoint '{}'".format(args.weight))
 
         self.show = False
-        self.outdir = 'run/mask-hkb-%s' % args.split
+        self.outdir = 'run/mask-%s-%s' % (args.dataset, args.split)
         if not self.show:
             if os.path.exists(self.outdir):
                 shutil.rmtree(self.outdir)
@@ -55,9 +57,13 @@ class Tester(object):
 
     def test(self):
         self.model.eval()
-        t0 = time.time()
+        
         for i, sample in enumerate(self.test_loader):
             images, targets, paths = sample['image'], sample['label'], sample['path']
+            
+            # if not '10056' in paths[0]:
+            #     continue
+            t0 = time.time()
             if self.args.cuda:
                 images, target = images.cuda(), targets.cuda()
             with torch.no_grad():
@@ -87,7 +93,7 @@ class Tester(object):
         
         plt.figure(figsize=(10, 10))
         plt.subplot(1, 2, 1).imshow(img[:, :, ::-1])
-        plt.subplot(1, 2, 2).imshow(pred.astype(np.uint8) * 255)
+        plt.subplot(1, 2, 2).imshow(np.tile((pred.astype(np.uint8) * 255)[:, :, np.newaxis], 3))
         plt.show()
         cv2.waitKey()
     

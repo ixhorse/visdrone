@@ -20,7 +20,7 @@ if __name__ == '__main__':
     args = parse_args()
     dataset = get_dataset(args.dataset)
     val_list = dataset.get_imglist('val')
-    mask_path = '../pytorch-deeplab-xception/run/mask-hkbval'
+    mask_path = '../pytorch-deeplab-xception/run/mask-%s-val' % args.dataset.lower()
 
     label_object = []
     detect_object = []
@@ -60,4 +60,4 @@ if __name__ == '__main__':
     print('recall: %f' % (np.sum(detect_object) / np.sum(label_object)))
     # print('cost avg: %f, std: %f' % (np.mean(pixel_num), np.std(pixel_num)))
     print('detect box avg: %f' %(np.mean(mask_object)))
-    print(sorted(undetected_img))
+    # print(sorted(undetected_img))

@@ -6,3 +6,6 @@ tools/hkb_det_save
 tools/hkb_det_txt
 tools/*.json
 tools/*.zip
+tools/*.jpg
+notebook/*.jpg
+notebook/.ipynb_checkpoints
