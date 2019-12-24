@@ -36,7 +36,8 @@ class Trainer(object):
                         backbone=args.backbone,
                         output_stride=args.out_stride,
                         sync_bn=args.sync_bn,
-                        freeze_bn=args.freeze_bn)
+                        freeze_bn=args.freeze_bn,
+                        dataset=args.dataset)
 
         train_params = [{'params': model.get_1x_lr_params(), 'lr': args.lr},
                         {'params': model.get_10x_lr_params(), 'lr': args.lr * 10}]
@@ -56,7 +57,7 @@ class Trainer(object):
             weight = torch.from_numpy(weight.astype(np.float32))
             print(weight)
         else:
-            weight = torch.tensor([1, 10]).float()
+            weight = torch.tensor([1, 40]).float()
         self.criterion = SegmentationLosses(weight=weight, cuda=args.cuda).build_loss(mode=args.loss_type)
         self.model, self.optimizer = model, optimizer
         

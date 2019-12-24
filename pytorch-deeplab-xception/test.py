@@ -33,7 +33,8 @@ class Tester(object):
         # Define network
         self.model = DeepLab(num_classes=self.nclass,
                         backbone=args.backbone,
-                        output_stride=args.out_stride)
+                        output_stride=args.out_stride,
+                        dataset=args.dataset)
 
         # Using cuda
         if args.cuda:
@@ -68,8 +69,10 @@ class Tester(object):
                 images, target = images.cuda(), targets.cuda()
             with torch.no_grad():
                 output = self.model(images)
+            #     output = nn.functional.softmax(output)
             preds = output.data.cpu().numpy()
-            targets = targets.cpu().numpy()
+            # targets = targets.cpu().numpy()
+            heats = preds[:, 1, :, :]
             preds = np.argmax(preds, axis=1)
             print('batch %d, time:%f' % (i, time.time() - t0))
 
@@ -78,8 +81,8 @@ class Tester(object):
                     self.show_result(path, pred)
 
             else:
-                for path, pred in zip(paths, preds):
-                    self.save_mask(self.outdir, pred, path)
+                for path, pred, heat in zip(paths, preds, heats):
+                    self.save_mask(self.outdir, pred, heat, path)
 
             t0 = time.time()
 
@@ -97,16 +100,17 @@ class Tester(object):
         plt.show()
         cv2.waitKey()
     
-    def save_mask(self, outdir, pred, path):
-        name = path.split('/')[-1][:-4] + '.png'
-        cv2.imwrite(os.path.join(outdir, name), pred.astype(np.uint8))
+    def save_mask(self, outdir, pred, heat, path):
+        name = path.split('/')[-1][:-4]
+        cv2.imwrite(os.path.join(outdir, name + '.png'), pred.astype(np.uint8))
+        # cv2.imwrite(os.path.join(outdir, name + '_heat.png'), (heat*255).astype(np.uint8))
 
 def main():
     parser = argparse.ArgumentParser(description="PyTorch DeeplabV3Plus Training")
     parser.add_argument('--backbone', type=str, default='resnet',
                         help='backbone name (default: resnet)')
     parser.add_argument('--out-stride', type=int, default=16,
-                        help='network output stride (default: 8)')
+                        help='network output stride (default: 16)')
     parser.add_argument('--dataset', type=str, default='visdrone',
                         help='dataset name (default: pascal)')
     parser.add_argument('--split', type=str, default='test',
