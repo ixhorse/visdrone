@@ -17,7 +17,7 @@ from mmcv.runner import load_checkpoint, parallel_test, obj_from_dict
 from mmcv.parallel import scatter, collate, MMDataParallel
 
 from mmdet import datasets
-from mmdet.datasets import VisDroneDataset, HKBDataset
+from mmdet.datasets import VisDroneDataset, HKBDataset, TT100KDataset
 from mmdet.models import build_detector, detectors
 from mmdet.apis import init_detector, inference_detector, show_result
 import pdb
@@ -25,7 +25,7 @@ import pdb
 def parse_args():
     parser = argparse.ArgumentParser(description='MMDet test detector')
     parser.add_argument('dataset', type=str, default='VisDrone',
-                        choices=['VisDrone', 'HKB'], help='dataset name')
+                        choices=['VisDrone', 'HKB', 'TT100K'], help='dataset name')
     parser.add_argument('config', help='test config file path')
     parser.add_argument('checkpoint', help='checkpoint file')
     parser.add_argument('--show', action='store_true', help='show results')
@@ -88,6 +88,9 @@ def main():
     elif args.dataset == 'HKB':
         root_dir = '../data/HKB/detect_voc'
         classes = HKBDataset.CLASSES
+    elif args.dataset == 'TT100K':
+        root_dir = '../data/TT100K/TT100K_chip_voc'
+        classes = TT100KDataset.CLASSES
 
     list_file = os.path.join(root_dir, 'ImageSets/Main/test.txt')
     image_dir = os.path.join(root_dir, 'JPEGImages')
@@ -95,10 +98,10 @@ def main():
         images = [x.strip() for x in f.readlines()]
     imglist = [os.path.join(image_dir, x+'.jpg') for x in images]
 
-    if True:
+    if False:
         imglist = glob.glob('samples/*.jpg')
 
-    results = []
+    results = dict()
     t0 = time.time()
     for i, preds in enumerate(inference_detector(model, imglist)):
         detect_time = time.time() - t0
@@ -113,17 +116,20 @@ def main():
             boxes = np.vstack(preds)
             if boxes.shape[0] == 0:
                 continue
-            boxes[:, [2, 3]] = boxes[:, [2, 3]] - boxes[:, [0, 1]]
+            # boxes[:, [2, 3]] = boxes[:, [2, 3]] - boxes[:, [0, 1]]
             labels = [
                 np.full(bbox.shape[0], i, dtype=np.int32)
                 for i, bbox in enumerate(preds)
             ]
             labels = np.concatenate(labels)
-            for box, label in zip(boxes, labels):
-                results.append({'image_id': img_id,
-                                'category_id': label,
-                                'bbox': box[:4],
-                                'score': box[4]})
+            boxes = np.concatenate((boxes, labels[:, np.newaxis]), axis=1)
+            # for box, label in zip(boxes, labels):
+            #     results.append({'image_id': img_id,
+            #                     'category_id': label,
+            #                     'bbox': box[:4],
+            #                     'score': box[4]})
+
+            results[img_id[:-4]] = boxes[boxes[:, 4] > 0.7]
         t0 = time.time()
 
     if not args.show:

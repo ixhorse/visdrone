@@ -11,10 +11,12 @@ from .extra_aug import ExtraAugmentation
 
 from .visdrone import VisDroneDataset
 from .hkb import HKBDataset
+from .tt100k import TT100KDataset
 
 __all__ = [
     'CustomDataset', 'XMLDataset', 'CocoDataset', 'VOCDataset', 'GroupSampler',
     'DistributedGroupSampler', 'build_dataloader', 'to_tensor', 'random_scale',
     'show_ann', 'get_dataset', 'ConcatDataset', 'RepeatDataset',
-    'ExtraAugmentation', 'WIDERFaceDataset', 'VisDroneDataset', 'HKBDataset'
+    'ExtraAugmentation', 'WIDERFaceDataset', 'VisDroneDataset', 'HKBDataset',
+    'TT100KDataset'
 ]
