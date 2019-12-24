@@ -41,7 +41,7 @@ class ASPP(nn.Module):
         else:
             inplanes = 2048
         if output_stride == 16:
-            dilations = [1, 6, 12, 18]
+            dilations = [6, 12, 18, 18]
         elif output_stride == 8:
             dilations = [1, 12, 24, 36]
         else:
@@ -50,11 +50,11 @@ class ASPP(nn.Module):
         self.aspp1 = _ASPPModule(inplanes, 64, 1, padding=0, dilation=dilations[0], BatchNorm=BatchNorm)
         self.aspp2 = _ASPPModule(inplanes, 64, 3, padding=dilations[1], dilation=dilations[1], BatchNorm=BatchNorm)
         self.aspp3 = _ASPPModule(inplanes, 64, 3, padding=dilations[2], dilation=dilations[2], BatchNorm=BatchNorm)
-        # self.aspp4 = _ASPPModule(inplanes, 256, 3, padding=dilations[3], dilation=dilations[3], BatchNorm=BatchNorm)
+        # self.aspp4 = _ASPPModule(inplanes, 64, 3, padding=dilations[3], dilation=dilations[3], BatchNorm=BatchNorm)
 
         # self.global_avg_pool = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)),
-        #                                      nn.Conv2d(inplanes, 256, 1, stride=1, bias=False),
-        #                                      BatchNorm(256),
+        #                                      nn.Conv2d(inplanes, 64, 1, stride=1, bias=False),
+        #                                      BatchNorm(64),
         #                                      nn.ReLU())
         self.conv1 = nn.Conv2d(64*3, 64, 1, bias=False)
         self.bn1 = BatchNorm(64)
