@@ -20,7 +20,7 @@ from datasets import get_dataset
 def parse_args():
     parser = argparse.ArgumentParser(description="show mask results")
     parser.add_argument('dataset', type=str, default='VisDrone',
-                        choices=['VisDrone', 'HKB'], help='dataset name')
+                        choices=['VisDrone', 'TT100K'], help='dataset name')
     args = parser.parse_args()
     return args
 
@@ -38,13 +38,13 @@ def _vis(img_path, dataset):
     img1 = img.copy()
     gt_box_list, _ = dataset.get_gtbox(img_path)
     for box in gt_box_list:
-        cv2.rectangle(img1, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 4)
+        cv2.rectangle(img1, (box[0], box[1]), (box[2], box[3]), (255, 127, 0), 3)
     #     cv2.putText(img1, str((box[2], box[3])), (box[0], box[3]), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 4)
     # cv2.putText(img1, str((width, height)), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 4)
     # label_region_box, _ = utils.generate_box_from_mask(label_mask[:, :, 0])
     # label_region_box = utils.resize_box(label_region_box, (40, 30), (width, height))
     # for box in label_region_box:
-    #     cv2.rectangle(img1, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 5)
+    #     cv2.rectangle(img1, (box[0], box[1]), (box[2], box[3]), (0, 127, 255), 5)
 
     # region box
     img2 = img.copy()
@@ -52,7 +52,7 @@ def _vis(img_path, dataset):
     region_box, contours = utils.generate_box_from_mask(pred_mask[:, :, 0])
     resize_region_box = utils.resize_box(region_box, (mask_w, mask_h), (width, height))
     for box in resize_region_box:
-        cv2.rectangle(img2, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 4)
+        cv2.rectangle(img2, (box[0], box[1]), (box[2], box[3]), (0, 127, 255), 4)
 
     # region postprocess
     img3 = img.copy()
@@ -60,13 +60,23 @@ def _vis(img_path, dataset):
     resize_region_box = utils.resize_box(new_regions, (mask_w, mask_h), (width, height))
     # new_regions = utils.generate_crop_region(resize_region_box, (width, height))
     for box in resize_region_box:
-        cv2.rectangle(img3, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 4)
+        cv2.rectangle(img3, (box[0], box[1]), (box[2], box[3]), (0, 127, 255), 4)
 
     img4 = img.copy()
     # resize_region_box = utils.resize_box(temp, (mask_w, mask_h), (width, height))
     new_regions = utils.generate_crop_region(resize_region_box, (width, height))
+    chip_list = []
     for box in new_regions:
-        cv2.rectangle(img4, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 4)
+        cv2.rectangle(img4, (box[0], box[1]), (box[2], box[3]), (0, 127, 255), 7)
+        chip_list.append(img[box[1]:box[3], box[0]:box[2], :].copy())
+
+    # heat map
+    img5 = img.copy().astype(np.float64)
+    pred_mask_path = os.path.join(pred_mask_dir, img_id+'_heat.png')
+    heat_mask = cv2.imread(pred_mask_path, cv2.IMREAD_GRAYSCALE)
+    heat_mask = cv2.resize(heat_mask, (width, height), interpolation=cv2.INTER_NEAREST)
+    img5[:, :, 2] += heat_mask / 255 * 150
+    
 
     plt.subplot(2, 3, 1); plt.imshow(img1[:, :, [2,1,0]])
     plt.subplot(2, 3, 2); plt.imshow(img2[:, :, [2,1,0]])
@@ -83,6 +93,9 @@ def _vis(img_path, dataset):
     cv2.imwrite(os.path.join(dirname, 'virtualization', 'label_mask.jpg'), label_mask)
     cv2.imwrite(os.path.join(dirname, 'virtualization', 'pred_mask.jpg'), pred_mask)
     cv2.imwrite(os.path.join(dirname, 'virtualization', 'result.jpg'), img4)
+    cv2.imwrite(os.path.join(dirname, 'virtualization', 'heat.jpg'), img5)
+    for i, chip in enumerate(chip_list):
+        cv2.imwrite(os.path.join(dirname, 'virtualization', 'chip_%d.jpg' % i), chip)
 
     
     plt.show()
@@ -100,6 +113,7 @@ if __name__ == '__main__':
     pred_mask_dir = '../pytorch-deeplab-xception/run/mask-%s-val' % args.dataset.lower()
     val_list = dataset.get_imglist('val')
 
-    for img_path in val_list[12:]:
+    for img_path in val_list[15:]:
+        print(img_path)
         _vis(img_path, dataset)
     
