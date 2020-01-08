@@ -1,1 +1,1 @@
-CUDA_VISIBLE_DEVICES=0 python test.py --backbone mobilenet --workers 32 --test-batch-size 32 --gpu-ids 0 --dataset tt100k --split val --crop-size 480,480 --weight "run/tt100k/deeplab-mobile-region/experiment_34/checkpoint_122.pth.tar"
+CUDA_VISIBLE_DEVICES=0 python test.py --backbone mobilenet --workers 32 --test-batch-size 32 --gpu-ids 0 --dataset tt100k --split val --crop-size 480,480 --weight "run/tt100k/deeplab-mobile-region/experiment_33/checkpoint_122.pth.tar"
